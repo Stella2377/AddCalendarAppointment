@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -35,6 +36,15 @@
 			background-color: #1a73e8 !important;
 			color: white;
 			font-weight: bold;
+			}
+			/* Ẩn dấu mũi tên mặc định của dropdown trên avatar */
+			.no-caret::after {
+				display: none !important;
+			}
+
+			.dropdown-item:active {
+				background-color: #f8f9fa;
+				color: #dc3545;
 			}
 		</style>
 	</head>
@@ -75,8 +85,30 @@
                     <option value="14">2 Weeks (Custom)</option>
                 </select>
             </div>
-        
-            <img src="https://ui-avatars.com/api/?name=User&background=random" class="rounded-circle ms-2" width="32" height="32" />
+			@{
+				// Lấy Email từ Session, nếu chưa có thì để mặc định là "User"
+				var userEmail = Context.Session.GetString("UserEmail") ?? "U";
+				var firstLetter = userEmail.Substring(0, 1).ToUpper();
+			}
+
+			<!-- NÚT AVATAR VÀ DROPDOWN ĐĂNG XUẤT -->
+			<div class="dropdown ms-2">
+				<div class="dropdown-toggle no-caret" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" style="cursor:pointer">
+					<!-- Sử dụng API ui-avatars để tạo hình tròn chứa chữ cái đầu -->
+					<img src="https://ui-avatars.com/api/?name=@firstLetter&background=0D8ABC&color=fff&rounded=true"
+						 class="rounded-circle border" width="32" height="32" alt="Avatar" />
+				</div>
+				<ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userMenu">
+					<li class="px-3 py-2 small text-muted border-bottom text-truncate" style="max-width: 200px;">
+						@userEmail
+					</li>
+					<li>
+						<a class="dropdown-item text-danger mt-1" asp-controller="Account" asp-action="Logout">
+							<i class="fa-solid fa-right-from-bracket me-2 small"></i> Đăng xuất
+						</a>
+					</li>
+				</ul>
+			</div>
         </div>
     </header>
 
