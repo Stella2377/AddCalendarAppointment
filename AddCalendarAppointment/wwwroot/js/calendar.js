@@ -5,7 +5,7 @@ $(document).ready(function () {
     let clipboard = null; // Lưu trữ trạng thái copy/cut: { eventId, action: 'copy'|'cut', $element }
     let $selectedEvent = null; // Block event đang được focus
     let targetDropTime = null; // Lưu thời gian/vị trí trên grid khi click để chuẩn bị Paste
-
+    loadAppointments();
     // Khởi tạo Bootstrap Tooltips (Hiển thị Tooltip khi Hover)
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -208,6 +208,43 @@ $(document).ready(function () {
 // CÁC HÀM GỌI AJAX (BACKEND GIAO TIẾP)
 // ==========================================
 
+function loadAppointments() {
+    $.ajax({
+        url: '/api/Appointment/GetAppointments', // Đường dẫn API ta vừa tạo ở Controller
+        type: 'GET',
+        success: function (data) {
+            // Xóa hết các event giả lập tĩnh (hardcode HTML) trên giao diện trước khi render
+            $('.appointment-block').remove();
+
+            data.forEach(function (evt) {
+                let dateStr = evt.start.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+                let startDate = new Date(evt.start);
+
+                // Tính toán vị trí Y trên lưới (1 giờ = 60px)
+                let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
+
+                // Tìm cột ngày tương ứng với event
+                let $column = $(`.day-col[data-date='${dateStr}']`);
+
+                if ($column.length > 0) {
+                    // Render block HTML và nhúng thuộc tính draggable để tương thích với Drag & Drop hiện tại
+                    let blockHtml = `
+                        <div class="appointment-block p-1 bg-primary text-white rounded shadow-sm" 
+                             data-id="${evt.id}" 
+                             draggable="true" 
+                             style="position: absolute; top: ${topPx}px; width: 95%; z-index: 10; cursor: grab;">
+                            <small>${evt.title}</small>
+                        </div>
+                    `;
+                    $column.append(blockHtml);
+                }
+            });
+        },
+        error: function (err) {
+            console.error("Lỗi khi load appointments từ database:", err);
+        }
+    });
+}
 function updateAppointmentTime(id, date, hour, min, callback) {
     // Logic tính toán DateTime sẽ gửi xuống API
     let newStartTime = `${date}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;

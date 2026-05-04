@@ -26,12 +26,20 @@ namespace AddCalendarAppointment.Services
             _context = context;
         }
 
+        public async Task<List<Appointment>> GetAppointmentsAsync(Guid userId)
+        {
+            return await _context.Appointments
+                .Where(a => a.OwnerId == userId && !a.IsDeleted)
+                .ToListAsync();
+        }
+
         public async Task<TimeSpan> GetUserDefaultDurationAsync(Guid userId)
         {
             var settings = await _context.UserSettings.FirstOrDefaultAsync(u => u.UserId == userId);
             int minutes = settings?.DefaultDuration ?? 60;
             return TimeSpan.FromMinutes(minutes);
         }
+
 
         public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedTeamId)> CreateAppointmentAsync(Appointment appointment, Guid userId)
         {

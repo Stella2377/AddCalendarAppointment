@@ -3,6 +3,9 @@
     // Giả lập Dữ liệu lấy từ Controller (Dựa trên Model UserSettings)
     // Nếu User chọn view "Week", ViewDays = 7. Nếu chọn custom "3 days", ViewDays = 3.
     int ViewDays = 7;
+
+    DateTime today = DateTime.Today;
+    DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
 }
 
 <style>
@@ -16,19 +19,12 @@
     
     @for (int i = 0; i < ViewDays; i++)
     {
-        // Highlight Chủ nhật (Demo index 0 là SUN)
-        string activeClass = (i == 1) ? "active" : ""; // Giả sử thứ 2 (i=1) đang là ngày hiện tại
-        string[] dayNames = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+        DateTime currentDay = startOfWeek.AddDays(i);
+        string activeClass = (currentDay.Date == DateTime.Today) ? "active" : ""; // Highlight ngày hôm nay
         
         <div class="day-header @activeClass">
-            <div class="day-name">@dayNames[i % 7]</div>
-            <div class="day-num">@(17 + i)</div>
-            @if (i == 1)
-            {
-                <div style="background: #e8f0fe; border-radius: 12px; margin: 4px 10px; font-size: 11px; padding: 2px;">
-                    <i class="fa-solid fa-check-circle text-primary"></i> 1 pending task
-                </div>
-            }
+            <div class="day-name">@currentDay.ToString("ddd").ToUpper()</div>
+            <div class="day-num">@currentDay.Day</div>
         </div>
     }
 </div>
@@ -38,7 +34,7 @@
         <div class="time-col">
             @for (int h = 1; h <= 23; h++)
             {
-                string ampm = h < 12 ? "AM" : (h == 12 ? "PM" : "PM");
+                string ampm = h < 12 ? "AM" : "PM";
                 int displayHour = h <= 12 ? h : h - 12;
                 <div class="time-slot"><span>@displayHour @ampm</span></div>
             }
@@ -46,34 +42,42 @@
 
         @for (int i = 0; i < ViewDays; i++)
         {
-            <div class="day-col">
-                @if (i == 1)
-                {
-                    <div class="appointment-block" style="top: 540px; height: 110px; background-color: #7986cb;">
-                        <div class="title">Java</div>
-                        <div class="time-loc">9 - 11:50am<br />F408</div>
-                    </div>
-                }
-                
-                @if (i == 2)
-                {
-                    <div class="appointment-block event-maybe" style="top: 420px; height: 110px; background-color: #3f51b5;">
-                        <div class="title">Mạng máy tính (Maybe)</div>
-                        <div class="time-loc">7 - 8:50am<br />F107</div>
-                    </div>
-                    
-                    <div class="appointment-block" style="top: 540px; height: 120px; background-color: #3f51b5;">
-                        <div class="title">Họp PBL3</div>
-                        <div class="time-loc">9 - 11am</div>
-                    </div>
-                }
+            DateTime currentDay = startOfWeek.AddDays(i);
 
-                @if (i == 3)
+            <!-- Quan trọng: Thêm thuộc tính data-date để Javascript Kéo-Thả có thể lấy được ngày -->
+            <div class="day-col" data-date="@currentDay.ToString("yyyy-MM-dd")">
+                
+                @if (Model != null)
                 {
-                    <div class="appointment-block event-pending" style="top: 420px; height: 110px; border-color: #7986cb; color: #7986cb;">
-                        <div class="title">Công nghệ phần mềm (Pending)</div>
-                        <div class="time-loc">7 - 8:50am<br />F209</div>
-                    </div>
+                    // Lọc ra các cuộc hẹn thuộc về ngày hiện tại của vòng lặp
+                    // ... inside the Razor loop where appointments are filtered:
+                    var todaysAppointments = ((IEnumerable<dynamic>)Model)
+                        .Where(a => a.StartTime.Date == currentDay.Date)
+                        .ToList();
+                    
+                    foreach (var app in todaysAppointments)
+                    {
+                        // Tính toán tọa độ Y (top) và chiều cao (height)
+                        // Quy ước lưới: 1 giờ = 60px
+                        int topPx = (app.StartTime.Hour * 60) + app.StartTime.Minute;
+                        int durationMins = (int)(app.EndTime - app.StartTime).TotalMinutes;
+                        int heightPx = durationMins > 0 ? durationMins : 60; // Mặc định cao 60px (1 tiếng) nếu lỗi thời gian
+
+                        <!-- Thẻ này được gắn data-id để liên kết với các thao tác trong calendar.js -->
+                        <div class="appointment-block"
+                             data-id="@app.Id"
+                             style="top: @(topPx)px; height: @(heightPx)px; background-color: #3f51b5;">
+                            <div class="title">@app.Title</div>
+                            <div class="time-loc">
+                                @app.StartTime.ToString("h:mm tt") - @app.EndTime.ToString("h:mm tt")
+                                @if (!string.IsNullOrEmpty(app.Location))
+                                {
+                                    <br />
+                                    @app.Location
+                                }
+                            </div>
+                        </div>
+                    }
                 }
             </div>
         }
