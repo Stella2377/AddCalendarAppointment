@@ -1,6 +1,8 @@
 using AddCalendarAppointment.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -8,6 +10,14 @@ namespace AddCalendarAppointment.Controllers
     {
         public IActionResult Index()
         {
+            // Kiểm tra xem đã đăng nhập chưa
+            if (HttpContext.Session.GetString("UserId") == null)
+            {
+                // Nếu chưa, bắt buộc quay về trang đăng nhập
+                return RedirectToAction("Index", "Account");
+            }
+
+            // Nếu đã đăng nhập, hiển thị giao diện Calendar
             return View();
         }
 

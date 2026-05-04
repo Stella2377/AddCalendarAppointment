@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Http
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -49,15 +50,46 @@
 				<div class="spinner-border spinner-border-sm text-primary search-loading" role="status" id="searchSpinner" style="display:none;"></div>
 			</div>
 
-			<div class="header-actions">
-				<select id="viewSelector" class="form-select form-select-sm border-secondary rounded-pill w-auto">
-					<option value="1">Day</option>
-					<option value="7" selected="">Week</option>
-					<option value="30">Month</option>
-				</select>
-				<img src="https://ui-avatars.com/api/?name=User&background=random" class="rounded-circle ms-2" width="32" height="32" />
+        <div class="header-actions">
+            <i class="fa-regular fa-circle-question fs-5 text-secondary mx-2"></i>
+            <i class="fa-solid fa-gear fs-5 text-secondary mx-2"></i>
+            <div class="view-dropdown mx-2">
+                <select id="viewSelector" class="form-select form-select-sm border-secondary rounded-pill">
+                    <option value="1">Day</option>
+                    <option value="7" selected>Week</option>
+                    <option value="30">Month</option>
+                    <option value="365">Year</option>
+                    <option disabled>──────</option>
+                    <option value="3">3 Days (Custom)</option>
+                    <option value="14">2 Weeks (Custom)</option>
+                </select>
+            </div>
+			@{
+				// Lấy Email từ Session, nếu chưa có thì để mặc định là "User"
+				var userEmail = Context.Session.GetString("UserEmail") ?? "U";
+				var firstLetter = userEmail.Substring(0, 1).ToUpper();
+			}
+
+			<!-- NÚT AVATAR VÀ DROPDOWN ĐĂNG XUẤT -->
+			<div class="dropdown ms-2">
+				<div class="dropdown-toggle no-caret" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" style="cursor:pointer">
+					<!-- Sử dụng API ui-avatars để tạo hình tròn chứa chữ cái đầu -->
+					<img src="https://ui-avatars.com/api/?name=@firstLetter&background=0D8ABC&color=fff&rounded=true"
+						 class="rounded-circle border" width="32" height="32" alt="Avatar" />
+				</div>
+				<ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userMenu">
+					<li class="px-3 py-2 small text-muted border-bottom text-truncate" style="max-width: 200px;">
+						@userEmail
+					</li>
+					<li>
+						<a class="dropdown-item text-danger mt-1" asp-controller="Account" asp-action="Logout">
+							<i class="fa-solid fa-right-from-bracket me-2 small"></i> Đăng xuất
+						</a>
+					</li>
+				</ul>
 			</div>
-		</header>
+        </div>
+    </header>
 
 		<div class="app-body">
 			<aside class="app-sidebar" id="sidebar">
@@ -117,7 +149,30 @@
 
 		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-		<script src="~/js/calendar.js" asp-append-version="true"></script>
-		@await RenderSectionAsync("Scripts", required: false)
-	</body>
+		<script>
+			// JS ẩn/hiện Sidebar
+			document.getElementById('btnToggleSidebar').addEventListener('click', function () {
+			document.getElementById('sidebar').classList.toggle('collapsed');
+			});
+
+			// Xử lý Loading cho Search bar
+			document.getElementById('searchInput').addEventListener('input', function() {
+			const spinner = document.getElementById('searchSpinner');
+			spinner.style.display = 'block';
+			clearTimeout(this.timer);
+			this.timer = setTimeout(() => { spinner.style.display = 'none'; }, 800);
+			});
+
+			// Xử lý đổi View
+			document.getElementById('viewSelector').addEventListener('change', function(e) {
+			let days = parseInt(e.target.value);
+			if(days <= 7) {
+			document.documentElement.style.setProperty('--col-count', days);
+			}
+			});
+		</script>
+
+    <!-- Thêm dòng này để nhúng file calendar.js -->
+    <script src="~/js/calendar.js" asp-append-version="true"></script>
+</body>
 </html>
