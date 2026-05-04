@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 using AddCalendarAppointment.Models;
 using AddCalendarAppointment.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,27 @@ namespace AddCalendarAppointment.Controllers
         private Guid GetCurrentUserId()
         {
             return Guid.Parse("00000000-0000-0000-0000-000000000001");
+        }
+
+        [HttpGet("GetAppointments")]
+        public async Task<IActionResult> GetAppointments()
+        {
+            var userId = GetCurrentUserId();
+
+            // Lấy danh sách lịch trình từ Service
+            // (Lưu ý: Bạn cần đảm bảo trong AppointmentService có viết hàm GetAppointmentsAsync này nhé)
+            var appointments = await _appointmentService.GetAppointmentsAsync(userId);
+
+            // Map sang format chuẩn ISO 8601 để thư viện giao diện Lịch (FE) đọc được
+            var calendarEvents = appointments.Select(a => new
+            {
+                id = a.Id,
+                title = a.Title,
+                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss")
+            });
+
+            return Ok(calendarEvents);
         }
 
         [HttpPost("create")]

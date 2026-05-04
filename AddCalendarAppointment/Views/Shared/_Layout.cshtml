@@ -1,35 +1,65 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - AddCalendarAppointment</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
-</head>
-<body>
-    <header class="app-header">
-        <i class="fa-solid fa-bars menu-icon" id="btnToggleSidebar"></i>
-        <div class="brand-logo">
-            <img src="https://d1csarkz8obe9u.cloudfront.net/posterpreviews/calendar-clipart-logo-design-template-9a3d7bbcf620587d4b74313072040475_screen.jpg?ts=1611246431" alt="Logo" />
-            <span>Calendar</span>
-        </div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>@ViewData["Title"] - Calendar</title>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+		<link rel="stylesheet" href="~/css/site.css" />
+		<style>
+			/* CSS bổ sung cho Mini Calendar */
+			.mini-calendar {
+			font-size: 0.85rem;
+			background: #fff;
+			padding: 10px;
+			}
+			.mini-calendar table {
+			width: 100%;
+			text-align: center;
+			}
+			.mini-calendar th {
+			color: #70757a;
+			font-weight: 500;
+			padding-bottom: 10px;
+			}
+			.mini-calendar td {
+			padding: 5px 0;
+			cursor: pointer;
+			border-radius: 50%;
+			}
+			.mini-calendar td:hover {
+			background-color: #f1f3f4;
+			}
+			.mini-calendar .current-day {
+			background-color: #1a73e8 !important;
+			color: white;
+			font-weight: bold;
+			}
+		</style>
+	</head>
+	<body>
+		<header class="app-header">
+			<i class="fa-solid fa-bars menu-icon" id="btnToggleSidebar"></i>
+			<div class="brand-logo">
+				<img src="https://d1csarkz8obe9u.cloudfront.net/posterpreviews/calendar-clipart-logo-design-template-9a3d7bbcf620587d4b74313072040475_screen.jpg?ts=1611246431" alt="Logo" />
+				<span>Calendar</span>
+			</div>
 
-        <div class="d-flex align-items-center ms-3">
-            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-3">Today</button>
-            <i class="fa-solid fa-chevron-left ms-2 me-3" style="cursor:pointer"></i>
-            <i class="fa-solid fa-chevron-right me-3" style="cursor:pointer"></i>
-            <h4 class="m-0 fs-5">May 2026</h4>
-        </div>
+			<div class="d-flex align-items-center ms-3">
+				<button class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-3">Today</button>
+				<i class="fa-solid fa-chevron-left ms-2 me-3" style="cursor:pointer"></i>
+				<i class="fa-solid fa-chevron-right me-3" style="cursor:pointer"></i>
+				<h4 class="m-0 fs-5">May 2026</h4>
+			</div>
 
-        <div class="header-search">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" placeholder="Search for events, teams..." id="searchInput" />
-            <div class="spinner-border spinner-border-sm text-primary search-loading" role="status" id="searchSpinner">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
+			<div class="header-search">
+				<i class="fa-solid fa-magnifying-glass search-icon"></i>
+				<input type="text" placeholder="Search for events, teams..." id="searchInput" />
+				<div class="spinner-border spinner-border-sm text-primary search-loading" role="status" id="searchSpinner" style="display:none;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+			</div>
 
         <div class="header-actions">
             <i class="fa-regular fa-circle-question fs-5 text-secondary mx-2"></i>
@@ -50,98 +80,141 @@
         </div>
     </header>
 
-    <div class="app-body">
-        <aside class="app-sidebar" id="sidebar">
-            <button class="btn-create" onclick="openCreateAppointmentModal()">
-                <img src="https://www.gstatic.com/images/branding/product/1x/google_plus_48dp.png" width="20" class="me-2" />
-                Create
-            </button>
+		<div class="app-body">
+			<aside class="app-sidebar" id="sidebar">
+				<button class="btn-create" onclick="openCreateAppointmentModal()">
+					<img src="https://www.gstatic.com/images/branding/product/1x/google_plus_48dp.png" width="20" class="me-2" />
+					Create
+				</button>
 
-            <div class="sidebar-section mt-4">
-                <button class="btn-my-teams" onclick="window.location.href='/Team/Manage'">
-                    <i class="fa-solid fa-users me-2"></i> My teams
-                </button>
-            </div>
+				<div class="sidebar-section mt-4">
+					<button class="btn-my-teams" onclick="window.location.href='/Team/Manage'">
+						<i class="fa-solid fa-users me-2"></i> My teams
+					</button>
+				</div>
 
-            <div class="sidebar-section text-center text-muted" style="height: 200px; background: #f8f9fa; border-radius: 8px;">
-                <small class="d-block mt-5">[Mini Calendar Component]</small>
-            </div>
+				<!-- PHẦN MINI CALENDAR ĐÃ ĐƯỢC CẬP NHẬT -->
+				<div class="sidebar-section mini-calendar mt-4">
+					<div class="d-flex justify-content-between align-items-center mb-2 px-2">
+						<span class="fw-bold">May 2026</span>
+						<div>
+							<i class="fa-solid fa-chevron-left small me-2" style="cursor:pointer"></i>
+							<i class="fa-solid fa-chevron-right small" style="cursor:pointer"></i>
+						</div>
+					</div>
+					<table>
+						<thead>
+							<tr>
+								<th>S</th>
+								<th>M</th>
+								<th>T</th>
+								<th>W</th>
+								<th>T</th>
+								<th>F</th>
+								<th>S</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="text-muted">26</td>
+								<td class="text-muted">27</td>
+								<td class="text-muted">28</td>
+								<td class="text-muted">29</td>
+								<td class="text-muted">30</td>
+								<td>1</td>
+								<td>2</td>
+							</tr>
+							<tr>
+								<td>3</td>
+								<td class="current-day">4</td>
+								<td>5</td>
+								<td>6</td>
+								<td>7</td>
+								<td>8</td>
+								<td>9</td>
+							</tr>
+							<tr>
+								<td>10</td>
+								<td>11</td>
+								<td>12</td>
+								<td>13</td>
+								<td>14</td>
+								<td>15</td>
+								<td>16</td>
+							</tr>
+							<tr>
+								<td>17</td>
+								<td>18</td>
+								<td>19</td>
+								<td>20</td>
+								<td>21</td>
+								<td>22</td>
+								<td>23</td>
+							</tr>
+							<tr>
+								<td>24</td>
+								<td>25</td>
+								<td>26</td>
+								<td>27</td>
+								<td>28</td>
+								<td>29</td>
+								<td>30</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 
-            <div class="sidebar-section">
-                <h3>My calendars <i class="fa-solid fa-angle-up"></i></h3>
-                <div class="calendar-item">
-                    <input type="checkbox" checked style="accent-color: #039be5;" /> <span>Học thuật (Blue)</span>
-                </div>
-                <div class="reminder-item">
-                    <i class="fa-solid fa-bell"></i> Sắp diễn ra: Hộp PBL3 (9:00 AM)
-                </div>
-                
-                <div class="calendar-item">
-                    <input type="checkbox" checked style="accent-color: #33b679;" /> <span>Sinh hoạt CLB (Green)</span>
-                </div>
-                <div class="calendar-item">
-                    <input type="checkbox" checked style="accent-color: #d50000;" /> <span>Deadlines (Red)</span>
-                </div>
-            </div>
-        </aside>
+				<div class="sidebar-section">
+					<h3>
+						My calendars <i class="fa-solid fa-angle-up"></i>
+					</h3>
+					<div class="calendar-item">
+						<input type="checkbox" checked="" style="accent-color: #039be5;" />
+						<span>Học thuật (Blue)</span>
+					</div>
+					<div class="reminder-item">
+						<i class="fa-solid fa-bell"></i> Sắp diễn ra: Hộp PBL3 (9:00 AM)
+					</div>
 
-        <main class="calendar-main">
-            @RenderBody()
-        </main>
-    </div>
+					<div class="calendar-item">
+						<input type="checkbox" checked="" style="accent-color: #33b679;" />
+						<span>Sinh hoạt CLB (Green)</span>
+					</div>
+					<div class="calendar-item">
+						<input type="checkbox" checked="" style="accent-color: #d50000;" />
+						<span>Deadlines (Red)</span>
+					</div>
+				</div>
+			</aside>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // JS ẩn/hiện Sidebar
-        document.getElementById('btnToggleSidebar').addEventListener('click', function () {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-        });
+			<main class="calendar-main">
+				@RenderBody()
+			</main>
+		</div>
 
-        // Xử lý Loading cho Search bar (Giả lập)
-        document.getElementById('searchInput').addEventListener('input', function() {
-        const spinner = document.getElementById('searchSpinner');
-        spinner.style.display = 'block';
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => { spinner.style.display = 'none'; }, 1000);
-        });
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+		<script>
+			// JS ẩn/hiện Sidebar
+			document.getElementById('btnToggleSidebar').addEventListener('click', function () {
+			document.getElementById('sidebar').classList.toggle('collapsed');
+			});
 
-        // Xử lý đổi View
-        document.getElementById('viewSelector').addEventListener('change', function(e) {
-        let days = parseInt(e.target.value);
-        // Trong thực tế, bạn sẽ reload lại page hoặc call Ajax:
-        // window.location.href = `/?viewDays=${days}`;
-            
-        // Code dưới chỉ là demo set biến CSS --col-count
-        if(days <= 7) {
-        document.documentElement.style.setProperty('--col-count', days);
-        }
-        });
-    </script>
-    @await RenderSectionAsync("Scripts", required: false)
+			// Xử lý Loading cho Search bar
+			document.getElementById('searchInput').addEventListener('input', function() {
+			const spinner = document.getElementById('searchSpinner');
+			spinner.style.display = 'block';
+			clearTimeout(this.timer);
+			this.timer = setTimeout(() => { spinner.style.display = 'none'; }, 800);
+			});
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // JS ẩn/hiện Sidebar
-        document.getElementById('btnToggleSidebar').addEventListener('click', function () {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        });
-
-        // Xử lý Loading cho Search bar (Giả lập)
-        document.getElementById('searchInput').addEventListener('input', function() {
-            const spinner = document.getElementById('searchSpinner');
-            spinner.style.display = 'block';
-            clearTimeout(this.timer);
-            this.timer = setTimeout(() => { spinner.style.display = 'none'; }, 1000);
-        });
-
-        // Xử lý đổi View
-        document.getElementById('viewSelector').addEventListener('change', function(e) {
-            let days = parseInt(e.target.value);
-            if(days <= 7) {
-                document.documentElement.style.setProperty('--col-count', days);
-            }
-        });
-    </script>
+			// Xử lý đổi View
+			document.getElementById('viewSelector').addEventListener('change', function(e) {
+			let days = parseInt(e.target.value);
+			if(days <= 7) {
+			document.documentElement.style.setProperty('--col-count', days);
+			}
+			});
+		</script>
 
     <!-- Thêm dòng này để nhúng file calendar.js -->
     <script src="~/js/calendar.js" asp-append-version="true"></script>

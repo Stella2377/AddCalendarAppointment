@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 
+*.exe
+*.dll
+*.pdb
+*.cache
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -361,3 +366,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Custom: Ignore configuration files with sensitive data
+appsettings.json
+appsettings.Development.json
