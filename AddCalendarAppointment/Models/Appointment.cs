@@ -1,30 +1,32 @@
-﻿using AddCalendarAppointment.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace AddCalendarAppointment.Models
 {
     public class Appointment
     {
-        [Key]
-        public int Id { get; set; } // Khóa chính (EF Core bắt buộc)
-
-        [Required(ErrorMessage = "Tên lịch hẹn không được trống")]
-        public string Name { get; set; }
-
-        public string? Location { get; set; }
-
-        [Required]
+        public Guid Id { get; set; }
+        public string Title { get; set; }
         public DateTime StartTime { get; set; }
-
-        [Required]
         public DateTime EndTime { get; set; }
+        public string Location { get; set; }
+        public string Description { get; set; }
 
-        // Thuộc tính để xử lý nhánh rẽ "Replace" (Ghi đè/Xóa lịch cũ)
-        public bool IsDeleted { get; set; } = false;
+        public VisibilityType Visibility { get; set; }
+        public string ColorCategory { get; set; }
 
-        // Mối quan hệ: Một lịch hẹn sở hữu (owns) nhiều lời nhắc
-        public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
+        public bool IsRecurring { get; set; }
+        public RecurringType RecurringRule { get; set; }
+
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedDate { get; set; }
+
+        public Guid OwnerId { get; set; }
+        public User Owner { get; set; }
+
+        public Guid? TeamId { get; set; }
+        public Team Team { get; set; }
+
+        public ICollection<AppointmentGuest> Guests { get; set; }
     }
 }

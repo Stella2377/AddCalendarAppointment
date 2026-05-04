@@ -1,17 +1,49 @@
-﻿using AddCalendarAppointment.Models;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace AddCalendarAppointment.Models
 {
+    public enum VisibilityType
+    {
+        Private,
+        Public
+    }
+
+    public enum RecurringType
+    {
+        None,
+        Daily,
+        Weekly,
+        Monthly,
+        Annually,
+        Custom
+    }
+
+    public enum GuestStatus
+    {
+        Pending,
+        Accepted,
+        Deny,
+        Maybe
+    }
+
+    public enum NotificationType
+    {
+        Off,
+        Alerts
+    }
+
     public class User
     {
-        [Key]
-        public string? UserID { get; set; }
+        public Guid Id { get; set; }
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string FullName { get; set; }
 
-        public string? UserName { get; set; }
-
-        // Mối quan hệ: Một User có thể tham gia nhiều GroupMeeting
-        public virtual ICollection<GroupMeeting> GroupMeetings { get; set; } = new List<GroupMeeting>();
+        public ICollection<Team> OwnedTeams { get; set; }
+        public ICollection<Team> JoinedTeams { get; set; }
+        public ICollection<Appointment> OwnedAppointments { get; set; }
+        public ICollection<AppointmentGuest> AppointmentInvitations { get; set; }
+        public UserSettings Settings { get; set; }
     }
 }

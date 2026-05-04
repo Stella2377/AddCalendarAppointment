@@ -1,31 +1,330 @@
-html {
-  font-size: 14px;
-}
-
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+/* --- BIẾN CSS TOÀN CỤC --- */
+:root {
+    --sidebar-width: 256px;
+    --header-height: 64px;
+    --border-color: #dadce0;
+    --primary-color: #1a73e8;
+    --bg-light: #f8f9fa;
+    --col-count: 7; /* Mặc định 7 ngày, sẽ thay đổi qua JS/Razor theo Time Window */
 }
 
 body {
-  margin-bottom: 60px;
+    margin: 0;
+    font-family: 'Roboto', 'Google Sans', Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+/* --- HEADER --- */
+.app-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: white;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+.menu-icon {
+    font-size: 20px;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 50%;
+}
+
+    .menu-icon:hover {
+        background-color: var(--bg-light);
+    }
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    margin-left: 8px;
+    width: 200px;
+}
+
+    .brand-logo img {
+        height: 40px;
+        margin-right: 8px;
+    }
+
+    .brand-logo span {
+        font-size: 22px;
+        color: #3c4043;
+    }
+
+.header-search {
+    position: relative;
+    margin: 0 20px;
+    flex-grow: 1;
+    max-width: 600px;
+}
+
+    .header-search input {
+        width: 100%;
+        padding: 10px 40px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: #f1f3f4;
+    }
+
+        .header-search input:focus {
+            background: white;
+            border-color: var(--border-color);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            outline: none;
+        }
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    color: #5f6368;
+}
+
+.search-loading {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    display: none;
+}
+/* Hiện khi đang search */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    gap: 10px;
+}
+
+.view-dropdown select {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+/* --- MAIN LAYOUT --- */
+.app-body {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - var(--header-height));
+}
+
+/* --- SIDEBAR --- */
+.app-sidebar {
+    width: var(--sidebar-width);
+    transition: width 0.3s ease, padding 0.3s ease;
+    overflow-y: auto;
+    border-right: 1px solid var(--border-color);
+    padding: 16px 8px;
+}
+
+    .app-sidebar.collapsed {
+        width: 0;
+        padding: 0;
+        border: none;
+        overflow: hidden;
+    }
+
+.btn-create {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 8px 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3);
+    cursor: pointer;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+    .btn-create:hover {
+        box-shadow: 0 1px 3px 1px rgba(60,64,67,0.15);
+        background: #fbfbfb;
+    }
+
+.sidebar-section {
+    margin-bottom: 24px;
+    padding: 0 8px;
+}
+
+    .sidebar-section h3 {
+        font-size: 14px;
+        color: #3c4043;
+        font-weight: 500;
+        display: flex;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+
+.btn-my-teams {
+    width: 100%;
+    text-align: left;
+    background: #f1f3f4;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 500;
+    color: #3c4043;
+}
+
+    .btn-my-teams:hover {
+        background: #e8eaed;
+    }
+
+/* Các loại lịch & màu sắc */
+.calendar-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+    .calendar-item input[type="checkbox"] {
+        margin-right: 12px;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+.reminder-item {
+    font-size: 13px;
+    color: #d93025;
+    margin-left: 28px;
+    margin-top: -4px;
+    font-style: italic;
+}
+
+/* --- CALENDAR GRID (TIME WINDOW) --- */
+.calendar-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.calendar-header-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(var(--col-count), 1fr);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    padding: 10px 0;
+}
+
+.day-header .day-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: #70757a;
+    text-transform: uppercase;
+}
+
+.day-header .day-num {
+    font-size: 24px;
+    color: #3c4043;
+    margin-top: 4px;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%;
+}
+
+.day-header.active .day-name {
+    color: var(--primary-color);
+}
+
+.day-header.active .day-num {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.calendar-body-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(var(--col-count), 1fr);
+    min-width: 800px; /* Tránh bị bóp quá nhỏ */
+}
+
+/* Cột giờ bên trái */
+.time-col {
+    border-right: 1px solid var(--border-color);
+}
+
+.time-slot {
+    height: 60px;
+    text-align: right;
+    padding-right: 8px;
+    position: relative;
+}
+
+    .time-slot span {
+        position: relative;
+        top: -10px;
+        font-size: 10px;
+        color: #70757a;
+    }
+
+/* Các cột ngày */
+.day-col {
+    border-right: 1px solid var(--border-color);
+    position: relative;
+}
+
+    .day-col::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
+        background-size: 100% 60px; /* Đường kẻ ngang mỗi giờ */
+    }
+
+/* --- APPOINTMENT BLOCKS --- */
+.appointment-block {
+    position: absolute;
+    left: 4px;
+    right: 8px; /* Margin trong cột */
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: white;
+    font-size: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+    .appointment-block .title {
+        font-weight: 500;
+        margin-bottom: 2px;
+    }
+
+    .appointment-block .time-loc {
+        font-size: 11px;
+        opacity: 0.9;
+    }
+
+/* Yêu cầu 4: Trạng thái Khách mời (Guest Status) */
+.event-pending {
+    background-color: transparent !important;
+    border: 2px dashed var(--primary-color); /* Viền đứt đoạn */
+    color: var(--primary-color) !important;
+}
+
+.event-maybe {
+    opacity: 0.5; /* Hiển thị màu pastel mờ */
 }

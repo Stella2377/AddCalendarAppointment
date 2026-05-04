@@ -1,8 +1,81 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Calendar";
+    // Giả lập Dữ liệu lấy từ Controller (Dựa trên Model UserSettings)
+    // Nếu User chọn view "Week", ViewDays = 7. Nếu chọn custom "3 days", ViewDays = 3.
+    int ViewDays = 7;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<style>
+    :root {
+        --col-count: @ViewDays;
+    }
+</style>
+
+<div class="calendar-header-grid">
+    <div class="time-header" style="font-size: 10px; color: #70757a; text-align: left; padding-left: 8px; margin-top: auto;">GMT+07</div>
+    
+    @for (int i = 0; i < ViewDays; i++)
+    {
+        // Highlight Chủ nhật (Demo index 0 là SUN)
+        string activeClass = (i == 1) ? "active" : ""; // Giả sử thứ 2 (i=1) đang là ngày hiện tại
+        string[] dayNames = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
+        
+        <div class="day-header @activeClass">
+            <div class="day-name">@dayNames[i % 7]</div>
+            <div class="day-num">@(17 + i)</div>
+            @if (i == 1)
+            {
+                <div style="background: #e8f0fe; border-radius: 12px; margin: 4px 10px; font-size: 11px; padding: 2px;">
+                    <i class="fa-solid fa-check-circle text-primary"></i> 1 pending task
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="calendar-body-scroll">
+    <div class="calendar-grid">
+        <div class="time-col">
+            @for (int h = 1; h <= 23; h++)
+            {
+                string ampm = h < 12 ? "AM" : (h == 12 ? "PM" : "PM");
+                int displayHour = h <= 12 ? h : h - 12;
+                <div class="time-slot"><span>@displayHour @ampm</span></div>
+            }
+        </div>
+
+        @for (int i = 0; i < ViewDays; i++)
+        {
+            <div class="day-col">
+                @if (i == 1)
+                {
+                    <div class="appointment-block" style="top: 540px; height: 110px; background-color: #7986cb;">
+                        <div class="title">Java</div>
+                        <div class="time-loc">9 - 11:50am<br />F408</div>
+                    </div>
+                }
+                
+                @if (i == 2)
+                {
+                    <div class="appointment-block event-maybe" style="top: 420px; height: 110px; background-color: #3f51b5;">
+                        <div class="title">Mạng máy tính (Maybe)</div>
+                        <div class="time-loc">7 - 8:50am<br />F107</div>
+                    </div>
+                    
+                    <div class="appointment-block" style="top: 540px; height: 120px; background-color: #3f51b5;">
+                        <div class="title">Họp PBL3</div>
+                        <div class="time-loc">9 - 11am</div>
+                    </div>
+                }
+
+                @if (i == 3)
+                {
+                    <div class="appointment-block event-pending" style="top: 420px; height: 110px; border-color: #7986cb; color: #7986cb;">
+                        <div class="title">Công nghệ phần mềm (Pending)</div>
+                        <div class="time-loc">7 - 8:50am<br />F209</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>
