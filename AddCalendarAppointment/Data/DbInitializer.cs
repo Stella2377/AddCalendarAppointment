@@ -14,9 +14,9 @@ namespace AddCalendarAppointment.Data
             if (context.Users.Any()) return;
 
             // 1. Tạo Users
-            var mainUser = new User { Id = Guid.NewGuid(), Username = "main_user", Email = "main@dut.edu.vn", FullName = "DUT Student" };
-            var member1 = new User { Id = Guid.NewGuid(), Username = "quynhnhu", Email = "nhu@dut.edu.vn", FullName = "Quỳnh Như" };
-            var member2 = new User { Id = Guid.NewGuid(), Username = "baongoc", Email = "ngoc@dut.edu.vn", FullName = "Bảo Ngọc" };
+            var mainUser = new User { Id = Guid.NewGuid(), Username = "main_user", Email = "main@dut.edu.vn", FullName = "DUT Student", Password = "123456" };
+            var member1 = new User { Id = Guid.NewGuid(), Username = "quynhnhu", Email = "nhu@dut.edu.vn", FullName = "Quỳnh Như", Password = "123456" };
+            var member2 = new User { Id = Guid.NewGuid(), Username = "baongoc", Email = "ngoc@dut.edu.vn", FullName = "Bảo Ngọc", Password = "123456" };
 
             context.Users.AddRange(mainUser, member1, member2);
 

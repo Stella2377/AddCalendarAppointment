@@ -1,0 +1,79 @@
+﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+
+namespace AddCalendarAppointment.Controllers
+{
+    public class AccountController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public AccountController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // View hiển thị 2 tab đăng nhập/đăng ký
+        public IActionResult Index()
+        {
+            // Nếu đã đăng nhập thì chuyển luôn vào trang chủ/calendar
+            if (HttpContext.Session.GetString("UserId") != null)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+            return View();
+        }
+        [HttpPost]
+        public IActionResult Register(string username, string email, string password)
+        {
+            // Kiểm tra xem Email đã tồn tại chưa
+            if (_context.Users.Any(u => u.Email == email))
+            {
+                return Json(new { success = false, message = "Email này đã được đăng ký!" });
+            }
+
+            // Kiểm tra Username tồn tại (tuỳ chọn, để tránh trùng tên hiển thị)
+            if (_context.Users.Any(u => u.Username == username))
+            {
+                return Json(new { success = false, message = "Tên hiển thị này đã có người dùng!" });
+            }
+
+            // Tạo user mới
+            var user = new User
+            {
+                Username = username, // Tên để hiển thị trong app
+                Email = email,       // Dùng email này để đăng nhập
+                Password = password
+            };
+
+            _context.Users.Add(user);
+            _context.SaveChanges();
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public IActionResult Login(string email, string password) // Đổi từ username sang email
+        {
+            // Tìm User dựa trên EMAIL và Password
+            var user = _context.Users.FirstOrDefault(u => u.Email == email && u.Password == password);
+
+            if (user != null)
+            {
+                // Lưu session khi đăng nhập thành công
+                HttpContext.Session.SetString("UserId", user.Id.ToString());
+                return Json(new { success = true });
+            }
+
+            return Json(new { success = false, message = "Sai Email hoặc mật khẩu!" });
+        }
+
+        public IActionResult Logout()
+        {
+            HttpContext.Session.Clear();
+            return RedirectToAction("Index");
+        }
+    }
+}
