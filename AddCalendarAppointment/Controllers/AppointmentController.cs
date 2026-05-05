@@ -64,7 +64,7 @@ namespace AddCalendarAppointment.Controllers
                 start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
                 end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
                 color = a.ColorCategory ?? "#039be5",
-                // Trả về danh sách Email của khách mời
+                notification = a.Notification ?? "30 minutes before",
                 guests = a.Guests != null ? a.Guests.Select(g => g.User.Email).ToList() : new List<string>()
             });
 
@@ -89,7 +89,8 @@ namespace AddCalendarAppointment.Controllers
                 IsRecurring = req.IsRecurring,
                 RecurringRule = req.RecurringRule,
                 OwnerId = userId,
-                Guests = new List<AppointmentGuest>()
+                Guests = new List<AppointmentGuest>(),
+                Notification = req.Notification
             };
 
             // 2. Tìm kiếm và thêm Guests từ danh sách Email
@@ -275,6 +276,7 @@ namespace AddCalendarAppointment.Controllers
             public bool IsRecurring { get; set; }
             public RecurringType RecurringRule { get; set; }
             public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+            public string? Notification { get; set; }
         }
     }
 }

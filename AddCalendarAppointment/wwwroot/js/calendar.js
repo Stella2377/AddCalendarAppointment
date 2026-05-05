@@ -321,7 +321,7 @@ function loadAppointments() {
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
                              data-title="${evt.title || '(No title)'}"
-                             data-notification="${notifStr}"
+                             data-notification="${evt.notification || '30 minutes before'}"
                              data-start="${evt.start}"
                              data-end="${evt.end}"
                              data-color="${evt.color}"
@@ -734,7 +734,7 @@ $(document).ready(function () {
         let id = block.attr('data-id');
         let location = block.attr('data-location');
         let description = block.attr('data-description');
-        let notification = block.attr('data-notification');
+        let notification = block.attr('data-notification') || "30 minutes before";
 
         // Giải mã JSON danh sách khách mời
         let guestsRaw = block.attr('data-guests');
@@ -752,6 +752,7 @@ $(document).ready(function () {
         $('#detail-time').text(timeStr);
         $('#detail-color-dot').css('background-color', color);
         $('#btn-delete-event').data('id', id);
+        $('#detail-notification').text(notification);
 
         // --- XỬ LÝ ẨN/HIỆN CÁC TRƯỜNG DỮ LIỆU ---
 
@@ -972,6 +973,7 @@ $(document).ready(function () {
 
         let finalStart = new Date(`${startDateVal}T${startTimeVal}:00`);
         let finalEnd = new Date(`${startDateVal}T${endTimeVal}:00`);
+        let selectedNotification = $('#notification-list select').first().val() || "30 minutes before";
 
         let appointmentData = {
             Title: title,
