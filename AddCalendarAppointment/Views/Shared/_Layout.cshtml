@@ -104,29 +104,39 @@
 
 		<div class="app-body">
 			<aside class="app-sidebar" id="sidebar">
-			@{
-				// KIỂM TRA ĐƯỜNG DẪN HIỆN TẠI
-				// Trả về true nếu URL đang ở trang quản lý nhóm
-				bool isTeamPage = Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("/Team/Manage", StringComparison.OrdinalIgnoreCase);
-			}
+				@{
+    // KIỂM TRA ĐƯỜNG DẪN HIỆN TẠI
+    bool isTeamPage = Context.Request.Path.Value != null 
+        && Context.Request.Path.Value.Contains("/Team/Manage", StringComparison.OrdinalIgnoreCase);
+}
 
-			<!-- NÚT CREATE -->
-			@if (isTeamPage)
-			{
-				// Trạng thái mờ khi ở trang My Teams
-				<button class="btn-create" style="opacity: 0.5; cursor: not-allowed; pointer-events: none;">
-					<i class="fa-solid fa-plus me-2" style="font-size: 20px; color: #ea4335;"></i>
-					Create
-				</button>
-			}
-			else
-			{
-				// Trạng thái bình thường khi ở trang Calendar
-				<button class="btn-create" onclick="openCreateAppointmentModal()">
-					<i class="fa-solid fa-plus me-2" style="font-size: 20px; color: #ea4335;"></i>
-					Create
-				</button>
-			}
+<div class="dropdown">
+    <button 
+        class="btn btn-light rounded-pill shadow-sm d-flex align-items-center px-3 py-2"
+        type="button"
+        data-bs-toggle="dropdown"
+        @(isTeamPage ? "style=opacity:0.5; cursor:not-allowed; pointer-events:none;" : "")
+    >
+        <img src="/images/google-plus-icon.png" width="24" class="me-2" />
+        <span class="fs-5">Create</span>
+    </button>
+
+    @if (!isTeamPage)
+    {
+        <ul class="dropdown-menu shadow">
+            <li>
+                <a class="dropdown-item" href="#" id="btn-create-event">
+                    Create event
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#joinMeetingModal">
+                    Enter Group meeting code
+                </a>
+            </li>
+        </ul>
+    }
+</div>
 
 			<!-- NÚT ĐIỀU HƯỚNG (MY TEAMS / BACK TO CALENDAR) -->
 			<div class="sidebar-section mt-4">
