@@ -97,16 +97,14 @@
         <div class="d-flex align-items-start mb-2 px-3">
             <div class="me-3 mt-1 text-muted"><i class="bi bi-calendar2-event fs-5"></i></div>
             <div class="flex-grow-1">
-                <!-- Dropdown Chọn Lịch -->
-                <div class="d-flex gap-2 mb-2">
-                    <select id="popover-calendar-type" class="form-select form-select-sm border-0 bg-light w-auto">
-                        <option value="Học thuật">Trương Thị Ngọc Huyền (Học thuật)</option>
-                        <option value="Sinh hoạt CLB">Trương Thị Ngọc Huyền (CLB)</option>
-                        <option value="Cá nhân">Trương Thị Ngọc Huyền (Cá nhân)</option>
-                    </select>
-                    <input type="color" id="popover-color" class="form-control form-control-color border-0 p-0" value="#039be5" style="width: 30px; height: 30px; cursor: pointer;">
-                </div>
                 
+                <!-- ĐÃ SỬA: Dropdown Chọn Lịch (Gộp chung Màu và Tên) -->
+                <div class="d-flex gap-2 mb-2">
+                    <select id="popover-color-select" class="form-select form-select-sm border-0 bg-light w-100" style="font-weight: 500;">
+                        <!-- JS sẽ tự động lấy dữ liệu từ Sidebar đổ vào đây -->
+                    </select>
+                </div>
+                
                 <div class="d-flex gap-2 mb-3">
                     <select class="form-select form-select-sm border-0 bg-light w-auto text-muted"><option>Busy</option><option>Free</option></select>
                     <select id="popover-visibility" class="form-select form-select-sm border-0 bg-light w-auto text-muted">
