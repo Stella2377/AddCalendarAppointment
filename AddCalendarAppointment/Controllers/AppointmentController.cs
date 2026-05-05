@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using AddCalendarAppointment.Data;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -15,10 +16,11 @@ namespace AddCalendarAppointment.Controllers
     public class AppointmentController : ControllerBase
     {
         private readonly AppointmentService _appointmentService;
-
-        public AppointmentController(AppointmentService appointmentService)
+        private readonly ApplicationDbContext _context;
+        public AppointmentController(AppointmentService appointmentService, ApplicationDbContext context)
         {
             _appointmentService = appointmentService;
+            _context = context;
         }
 
         private Guid GetCurrentUserId()
@@ -56,25 +58,64 @@ namespace AddCalendarAppointment.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] Appointment appointment)
+        public async Task<IActionResult> Create([FromBody] CreateAppointmentRequest req)
         {
             var userId = GetCurrentUserId();
-            appointment.OwnerId = userId;
 
-            // Đẩy xuống Service để lưu vào DB
+            // 1. Chuyển dữ liệu từ Request sang Model Appointment
+            var appointment = new Appointment
+            {
+                Title = req.Title,
+                StartTime = req.StartTime,
+                EndTime = req.EndTime,
+                Location = req.Location,
+                Description = req.Description,
+                ColorCategory = req.ColorCategory,
+                Visibility = req.Visibility,
+                IsRecurring = req.IsRecurring,
+                RecurringRule = req.RecurringRule,
+                OwnerId = userId,
+                Guests = new List<AppointmentGuest>()
+            };
+
+            // 2. Tìm kiếm và thêm Guests từ danh sách Email
+            if (req.GuestEmails != null && req.GuestEmails.Any())
+            {
+                var guests = _context.Users.Where(u => req.GuestEmails.Contains(u.Email)).ToList();
+                foreach (var guest in guests)
+                {
+                    appointment.Guests.Add(new AppointmentGuest
+                    {
+                        UserId = guest.Id,
+                        Status = GuestStatus.Pending
+                    });
+                }
+            }
+
+            // 3. Lưu qua Service
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-            {
                 return Ok(new { suggestTeamJoin = true, teamId = result.suggestedTeamId, message = "Would you like to join the existing team meeting?" });
-            }
 
             if (!result.isSuccess)
-            {
                 return BadRequest(new { error = result.errorMessage });
-            }
 
             return Ok(new { success = true });
+        }
+
+        [HttpGet("search-users")]
+        public IActionResult SearchUsers([FromQuery] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return Ok(new List<object>());
+
+            var users = _context.Users
+                .Where(u => u.Email.Contains(email))
+                .Select(u => new { u.Email, u.Username })
+                .Take(5) // Lấy tối đa 5 người gợi ý
+                .ToList();
+
+            return Ok(users);
         }
 
         [HttpPost("edit-recurring/{id}")]
@@ -108,5 +149,19 @@ namespace AddCalendarAppointment.Controllers
             await _appointmentService.EmptyTrashAsync(userId);
             return Ok(new { success = true });
         }
+    }
+
+    public class CreateAppointmentRequest
+    {
+        public string Title { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? Location { get; set; }
+        public string? Description { get; set; }
+        public string? ColorCategory { get; set; }
+        public VisibilityType Visibility { get; set; }
+        public bool IsRecurring { get; set; }
+        public RecurringType RecurringRule { get; set; }
+        public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
     }
 }

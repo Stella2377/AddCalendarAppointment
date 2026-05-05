@@ -329,3 +329,34 @@ body {
 .event-maybe {
     opacity: 0.5; /* Hiển thị màu pastel mờ */
 }
+
+
+/* ==========================================
+   CSS CHO FORM POPOVER (MỚI THÊM)
+   ========================================== */
+#event-popover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+    border-radius: 12px !important;
+}
+
+#popover-header {
+    cursor: grab;
+    background-color: #f1f3f4;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+    #popover-header:active {
+        cursor: grabbing;
+    }
+
+.popover-body-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.time-input-group input[type="date"],
+.time-input-group input[type="time"] {
+    max-width: 130px;
+}
