@@ -81,6 +81,29 @@ namespace AddCalendarAppointment.Controllers
         {
             var userId = GetCurrentUserId();
 
+            var overlaps = await _context.Appointments
+                .Where(a => !a.IsDeleted
+                         && (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId))
+                         && a.StartTime < req.EndTime && a.EndTime > req.StartTime) // Công thức giao nhau
+                .ToListAsync();
+
+            if (overlaps.Any())
+            {
+                if (!req.OverwriteOverlap)
+                {
+                    // Nếu chưa cho phép ghi đè -> Báo về JS để hiện Popup hỏi ý kiến
+                    return Ok(new { success = false, isOverlap = true, message = "Thời gian này đã có lịch. Bạn có muốn thay thế lịch cũ không?" });
+                }
+                else
+                {
+                    // Nếu người dùng chọn "Thay thế" -> Xóa các lịch bị trùng
+                    foreach (var oldAppt in overlaps)
+                    {
+                        await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
+                    }
+                }
+            }
+
             // 1. Chuyển dữ liệu từ Request sang Model Appointment
             var appointment = new Appointment
             {
@@ -205,8 +228,36 @@ namespace AddCalendarAppointment.Controllers
             {
                 var userId = GetCurrentUserId(); // Lấy ID người dùng từ Session
 
+                // Chuyển đổi thời gian String sang DateTime trước để dùng kiểm tra trùng lặp
+                DateTime newStart = DateTime.Parse(request.StartTime);
+                DateTime newEnd = DateTime.Parse(request.EndTime);
+
+                // --- THÊM LOGIC CHECK TRÙNG LỊCH ---
+                var overlaps = await _context.Appointments
+                    .Where(a => !a.IsDeleted
+                             && a.Id != request.Id // Bỏ qua chính cuộc hẹn đang kéo thả
+                             && (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId))
+                             && a.StartTime < newEnd && a.EndTime > newStart)
+                    .ToListAsync();
+
+                if (overlaps.Any())
+                {
+                    if (!request.OverwriteOverlap)
+                    {
+                        return Ok(new { success = false, isOverlap = true, message = "Thời gian này đã có lịch. Bạn có muốn thay thế lịch cũ không?" });
+                    }
+                    else
+                    {
+                        foreach (var oldAppt in overlaps)
+                        {
+                            await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
+                        }
+                    }
+                }
+                // --- KẾT THÚC LOGIC CHECK TRÙNG ---
+
+
                 // Gọi Service để tìm cuộc hẹn
-                // Giả sử Service của bạn có hàm GetById hoặc bạn có thể gọi trực tiếp DB qua Context
                 var appointments = await _appointmentService.GetAppointmentsAsync(userId);
                 var appt = appointments.FirstOrDefault(a => a.Id == request.Id);
 
@@ -214,11 +265,10 @@ namespace AddCalendarAppointment.Controllers
                     return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
 
                 // Cập nhật thời gian mới
-                appt.StartTime = DateTime.Parse(request.StartTime);
-                appt.EndTime = DateTime.Parse(request.EndTime);
+                appt.StartTime = newStart;
+                appt.EndTime = newEnd;
 
-                // Lưu thay đổi (Giả sử Service của bạn có hàm Update)
-                // Nếu Service chưa có, bạn cần bổ sung hàm Update vào AppointmentService
+                // Lưu thay đổi
                 await _appointmentService.UpdateAppointmentAsync(appt);
 
                 return Ok(new { success = true });
@@ -332,6 +382,7 @@ namespace AddCalendarAppointment.Controllers
             public Guid Id { get; set; }
             public string StartTime { get; set; }
             public string EndTime { get; set; }
+            public bool OverwriteOverlap { get; set; } = false;
         }
 
 
@@ -349,6 +400,7 @@ namespace AddCalendarAppointment.Controllers
             public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
             public string? Notification { get; set; }
             public Guid? TeamId { get; set; }
+            public bool OverwriteOverlap { get; set; } = false;
         }
 
         // 1. Thêm Class Request để nhận dữ liệu Update từ Javascript
@@ -364,6 +416,30 @@ namespace AddCalendarAppointment.Controllers
             try
             {
                 var userId = GetCurrentUserId();
+
+                var overlaps = await _context.Appointments
+                    .Where(a => !a.IsDeleted
+                             && a.Id != req.Id // Quan trọng: Bỏ qua chính cuộc hẹn đang sửa
+                             && (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId))
+                             && a.StartTime < req.EndTime && a.EndTime > req.StartTime) // Công thức giao nhau
+                    .ToListAsync();
+
+                if (overlaps.Any())
+                {
+                    if (!req.OverwriteOverlap)
+                    {
+                        // Nếu chưa cho phép ghi đè -> Trả cờ isOverlap về cho Javascript bật Popup
+                        return Ok(new { success = false, isOverlap = true, message = "Thời gian này đã có lịch. Bạn có muốn thay thế lịch cũ không?" });
+                    }
+                    else
+                    {
+                        // Nếu đồng ý "Thay thế" -> Xóa các sự kiện bị đè
+                        foreach (var oldAppt in overlaps)
+                        {
+                            await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
+                        }
+                    }
+                }
 
                 // Lấy cuộc hẹn CÓ BAO GỒM danh sách Guests từ DB
                 var appt = await _context.Appointments
