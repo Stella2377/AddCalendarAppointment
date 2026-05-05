@@ -66,10 +66,8 @@ function renderDynamicMiniCalendar(date) {
     $tbody.empty();
     const year = date.getFullYear();
     const month = date.getMonth();
-    
-    // Ngày thực tế hệ thống
+
     const today = new Date();
-    // Kiểm tra xem lịch có đang hiển thị đúng tháng/năm hiện tại không
     const isCurrentMonth = (month === today.getMonth() && year === today.getFullYear());
 
     const monthName = date.toLocaleString('default', { month: 'long' });
@@ -80,12 +78,58 @@ function renderDynamicMiniCalendar(date) {
     const prevLastDay = new Date(year, month, 0).getDate();
 
     let days = [];
-    // Ngày tháng trước
+
+    // 1. Lấy ngày tháng trước
     for (let x = firstDayIndex; x > 0; x--) {
         days.push({ day: prevLastDay - x + 1, status: 'text-muted' });
     }
 
-});
+    // 2. Lấy ngày tháng hiện tại
+    for (let i = 1; i <= lastDay; i++) {
+        let status = '';
+        if (isCurrentMonth) {
+            if (i === today.getDate()) {
+                status = 'current-day';
+            } else if (i === date.getDate()) {
+                status = 'selected-day';
+            }
+        }
+        days.push({ day: i, status: status });
+    }
+
+    // 3. Lấy ngày tháng sau cho đủ 6 hàng (42 ô)
+    const remaining = 42 - days.length;
+    for (let j = 1; j <= remaining; j++) {
+        days.push({ day: j, status: 'text-muted' });
+    }
+
+    // 4. Vẽ các hàng (tr) và cột (td) vào bảng
+    for (let i = 0; i < days.length; i += 7) {
+        let $tr = $('<tr></tr>');
+        days.slice(i, i + 7).forEach(d => {
+            let $td = $(`<td>${d.day}</td>`);
+
+            if (d.status === 'text-muted') {
+                $td.addClass('text-muted');
+                $td.css('cursor', 'default');
+            } else {
+                if (d.status) $td.addClass(d.status);
+
+                $td.css('cursor', 'pointer').on('click', function () {
+                    currDate = new Date(year, month, d.day);
+                    renderDynamicMiniCalendar(currDate);
+                    updateMainMonthTitle(currDate);
+
+                    if (typeof loadAppointments === "function") {
+                        loadAppointments();
+                    }
+                });
+            }
+            $tr.append($td);
+        });
+        $tbody.append($tr);
+    }
+}
 
 // ==========================================
 // CÁC HÀM GỌI AJAX (BACKEND GIAO TIẾP)
@@ -98,23 +142,6 @@ function loadAppointments() {
         success: function (data) {
             // Xóa hết các event trên giao diện trước khi render cái mới
             $('.appointment-block').remove();
-
-    // Ngày trong tháng hiện tại
-    for (let i = 1; i <= lastDay; i++) {
-        let status = '';
-        
-        // CHỈ TÔ MÀU NẾU LỊCH ĐANG Ở ĐÚNG THÁNG THỰC TẾ
-        if (isCurrentMonth) {
-            if (i === today.getDate()) {
-                status = 'current-day'; // Xanh đậm cho hôm nay
-            } else if (i === date.getDate()) {
-                status = 'selected-day'; // Xanh nhạt cho ngày đang chọn
-            }
-        }
-        // Nếu không trùng tháng hiện tại, status để trống -> Ngày trắng trơn
-        
-        days.push({ day: i, status: status });
-    }
 
             data.forEach(function (evt) {
                 let dateStr = evt.start.split('T')[0]; // Lấy "YYYY-MM-DD"
@@ -217,31 +244,6 @@ function openDetailsModal(id) {
     let myModal = new bootstrap.Modal(document.getElementById('detailModal'));
     myModal.show();
 
-    for (let i = 0; i < days.length; i += 7) {
-        let $tr = $('<tr></tr>');
-        days.slice(i, i + 7).forEach(d => {
-            let $td = $(`<td>${d.day}</td>`);
-            
-            if (d.status === 'text-muted') {
-                $td.addClass('text-muted');
-                $td.css('cursor', 'default'); 
-            } else {
-                if (d.status) $td.addClass(d.status);
-                
-                $td.css('cursor', 'pointer').on('click', function () {
-                    currDate = new Date(year, month, d.day);
-                    renderDynamicMiniCalendar(currDate);
-                    updateMainMonthTitle(currDate);
-                    
-                    if (typeof loadAppointments === "function") {
-                        loadAppointments();
-                    }
-                });
-            }
-            $tr.append($td);
-        });
-        $tbody.append($tr);
-    }
 }
 
 function updateMainMonthTitle(date) {

@@ -55,8 +55,8 @@ namespace AddCalendarAppointment.Data
             team1.Members = new[] { mainUser, member1, member2 }.ToList();
             team2.Members = new[] { mainUser, member1 }.ToList();
 
-            // 4. Tạo Appointments (Mô phỏng lịch tháng 5/2026)
-            var baseDate = new DateTime(2026, 5, 18); // Ngày hiển thị trên giao diện của bạn
+            // 4. Tạo Appointments
+            var baseDate = DateTime.Today;
 
             var app1 = new Appointment
             {
