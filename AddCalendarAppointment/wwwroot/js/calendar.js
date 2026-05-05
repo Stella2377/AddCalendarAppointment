@@ -210,30 +210,46 @@ $(document).ready(function () {
 
 function loadAppointments() {
     $.ajax({
-        url: '/api/Appointment/GetAppointments', // Đường dẫn API ta vừa tạo ở Controller
+        url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
-            // Xóa hết các event giả lập tĩnh (hardcode HTML) trên giao diện trước khi render
+            // Xóa hết các event trên giao diện trước khi render cái mới
             $('.appointment-block').remove();
 
             data.forEach(function (evt) {
-                let dateStr = evt.start.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+                let dateStr = evt.start.split('T')[0]; // Lấy "YYYY-MM-DD"
                 let startDate = new Date(evt.start);
+                let endDate = new Date(evt.end);
 
-                // Tính toán vị trí Y trên lưới (1 giờ = 60px)
+                // Tính toán vị trí Y (top) trên lưới (1 giờ = 60px, 1 phút = 1px)
                 let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
+                
+                // Tính toán thời lượng để quyết định chiều cao của khối (Height)
+                let durationMins = (endDate - startDate) / (1000 * 60); 
+                let heightPx = durationMins > 0 ? durationMins : 60; // Mặc định 60px (1 tiếng)
 
-                // Tìm cột ngày tương ứng với event
+                // Tìm cột ngày tương ứng
                 let $column = $(`.day-col[data-date='${dateStr}']`);
 
                 if ($column.length > 0) {
-                    // Render block HTML và nhúng thuộc tính draggable để tương thích với Drag & Drop hiện tại
+                    // Format thời gian hiển thị (ví dụ: 9:00 AM)
+                    let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + 
+                                     " - " + 
+                                     endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    
+                    let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+
+                    // Render block HTML
                     let blockHtml = `
-                        <div class="appointment-block p-1 bg-primary text-white rounded shadow-sm" 
+                        <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
                              draggable="true" 
-                             style="position: absolute; top: ${topPx}px; width: 95%; z-index: 10; cursor: grab;">
-                            <small>${evt.title}</small>
+                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; cursor: grab; background-color: #3f51b5; overflow: hidden;">
+                            <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title}</div>
+                            <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                                ${timeString}
+                                ${locString}
+                            </div>
                         </div>
                     `;
                     $column.append(blockHtml);

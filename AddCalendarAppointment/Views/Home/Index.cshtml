@@ -46,39 +46,7 @@
 
             <!-- Quan trọng: Thêm thuộc tính data-date để Javascript Kéo-Thả có thể lấy được ngày -->
             <div class="day-col" data-date="@currentDay.ToString("yyyy-MM-dd")">
-                
-                @if (Model != null)
-                {
-                    // Lọc ra các cuộc hẹn thuộc về ngày hiện tại của vòng lặp
-                    // ... inside the Razor loop where appointments are filtered:
-                    var todaysAppointments = ((IEnumerable<dynamic>)Model)
-                        .Where(a => a.StartTime.Date == currentDay.Date)
-                        .ToList();
-                    
-                    foreach (var app in todaysAppointments)
-                    {
-                        // Tính toán tọa độ Y (top) và chiều cao (height)
-                        // Quy ước lưới: 1 giờ = 60px
-                        int topPx = (app.StartTime.Hour * 60) + app.StartTime.Minute;
-                        int durationMins = (int)(app.EndTime - app.StartTime).TotalMinutes;
-                        int heightPx = durationMins > 0 ? durationMins : 60; // Mặc định cao 60px (1 tiếng) nếu lỗi thời gian
 
-                        <!-- Thẻ này được gắn data-id để liên kết với các thao tác trong calendar.js -->
-                        <div class="appointment-block"
-                             data-id="@app.Id"
-                             style="top: @(topPx)px; height: @(heightPx)px; background-color: #3f51b5;">
-                            <div class="title">@app.Title</div>
-                            <div class="time-loc">
-                                @app.StartTime.ToString("h:mm tt") - @app.EndTime.ToString("h:mm tt")
-                                @if (!string.IsNullOrEmpty(app.Location))
-                                {
-                                    <br />
-                                    @app.Location
-                                }
-                            </div>
-                        </div>
-                    }
-                }
             </div>
         }
     </div>

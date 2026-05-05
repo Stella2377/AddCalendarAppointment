@@ -28,18 +28,15 @@ namespace AddCalendarAppointment.Controllers
         public async Task<IActionResult> GetAppointments()
         {
             var userId = GetCurrentUserId();
-
-            // Lấy danh sách lịch trình từ Service
-            // (Lưu ý: Bạn cần đảm bảo trong AppointmentService có viết hàm GetAppointmentsAsync này nhé)
             var appointments = await _appointmentService.GetAppointmentsAsync(userId);
 
-            // Map sang format chuẩn ISO 8601 để thư viện giao diện Lịch (FE) đọc được
             var calendarEvents = appointments.Select(a => new
             {
                 id = a.Id,
                 title = a.Title,
+                location = a.Location, // Bổ sung trường Location
                 start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss")
+                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss") // Backend đã truyền đủ Start/End
             });
 
             return Ok(calendarEvents);

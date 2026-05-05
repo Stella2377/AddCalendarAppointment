@@ -68,7 +68,7 @@ namespace AddCalendarAppointment.Data
                 ColorCategory = "#7986cb",
                 Visibility = VisibilityType.Private,
                 OwnerId = mainUser.Id,
-                Description = "" // Bổ sung
+                Description = "Hoc Java" // Bổ sung
             };
 
             var app2 = new Appointment
@@ -82,7 +82,7 @@ namespace AddCalendarAppointment.Data
                 Visibility = VisibilityType.Public,
                 OwnerId = mainUser.Id,
                 TeamId = team2.Id,
-                Description = "" // Bổ sung
+                Description = "PBL3" // Bổ sung
             };
 
             var app3 = new Appointment
@@ -95,7 +95,7 @@ namespace AddCalendarAppointment.Data
                 ColorCategory = "#3f51b5",
                 Visibility = VisibilityType.Private,
                 OwnerId = member1.Id,
-                Description = "" // Bổ sung
+                Description = "PBL3" // Bổ sung
             };
 
             context.Appointments.AddRange(app1, app2, app3);
