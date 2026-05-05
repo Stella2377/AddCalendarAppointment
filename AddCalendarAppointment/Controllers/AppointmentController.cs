@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Text;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -210,97 +211,18 @@ namespace AddCalendarAppointment.Controllers
             public string EndTime { get; set; }
         }
 
-        [HttpPost("Search")]
-        public async Task<IActionResult> Search([FromBody] SearchRequest req)
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var allAppointments = await _appointmentService.GetAppointmentsAsync(userId);
-
-                if (allAppointments == null || !allAppointments.Any())
-                {
-                    return Ok(new List<object>());
-                }
-
-                IEnumerable<Appointment> results = allAppointments;
-
-                // CHỈ LỌC THEO TỪ KHÓA (TÌM TRONG TIÊU ĐỀ HOẶC MÔ TẢ)
-                if (!string.IsNullOrEmpty(req.Keyword))
-                {
-                    var kw = RemoveDiacritics(req.Keyword);
-                    results = results.Where(a =>
-                        (!string.IsNullOrEmpty(a.Title) && RemoveDiacritics(a.Title).Contains(kw)) ||
-                        (!string.IsNullOrEmpty(a.Description) && RemoveDiacritics(a.Description).Contains(kw))
-                    );
-                }
-
-                var finalResults = results.ToList();
-
-                var calendarEvents = finalResults.Select(a => new {
-                    id = a.Id,
-                    title = a.Title,
-                    location = a.Location,
-                    start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                    end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                    color = a.ColorCategory ?? "#039be5"
-                });
-
-                return Ok(calendarEvents);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        private string RemoveDiacritics(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return text;
-
-            // Chuyển hết thành chữ thường trước
-            text = text.ToLower();
-
-            var normalizedString = text.Normalize(NormalizationForm.FormD);
-            var stringBuilder = new StringBuilder(text.Length);
-
-            foreach (char c in normalizedString)
-            {
-                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
-                {
-                    stringBuilder.Append(c);
-                }
-            }
-
-            return stringBuilder
-                .ToString()
-                .Normalize(NormalizationForm.FormC)
-                .Replace("đ", "d"); // Xử lý riêng chữ đ của tiếng Việt
-        }
-
-        // Đảm bảo Class này vẫn giữ các dấu ? (nullable) để tránh lỗi 400 Bad Request
-        public class SearchRequest
-        {
-            public string? Keyword { get; set; }
-            public string? Who { get; set; }
-            public string? Location { get; set; }
-            public string? Exclude { get; set; }
-            public string? FromDate { get; set; }
-            public string? ToDate { get; set; }
-        }
-
         public class CreateAppointmentRequest
-    {
-        public string Title { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
-        public string? Location { get; set; }
-        public string? Description { get; set; }
-        public string? ColorCategory { get; set; }
-        public VisibilityType Visibility { get; set; }
-        public bool IsRecurring { get; set; }
-        public RecurringType RecurringRule { get; set; }
-        public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        {
+            public string Title { get; set; }
+            public DateTime StartTime { get; set; }
+            public DateTime EndTime { get; set; }
+            public string? Location { get; set; }
+            public string? Description { get; set; }
+            public string? ColorCategory { get; set; }
+            public VisibilityType Visibility { get; set; }
+            public bool IsRecurring { get; set; }
+            public RecurringType RecurringRule { get; set; }
+            public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        }
     }
 }
