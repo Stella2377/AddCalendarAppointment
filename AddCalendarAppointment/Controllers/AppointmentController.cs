@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Text;
+using System.Globalization;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -214,12 +216,28 @@ namespace AddCalendarAppointment.Controllers
             try
             {
                 var userId = GetCurrentUserId();
+                var allAppointments = await _appointmentService.GetAppointmentsAsync(userId);
 
-                // Gọi hàm lọc từ Service
-                var results = await _appointmentService.SearchAppointmentsAsync(userId, req);
+                if (allAppointments == null || !allAppointments.Any())
+                {
+                    return Ok(new List<object>());
+                }
 
-                // Map kết quả trả về giống hệt như hàm GetAppointments
-                var calendarEvents = results.Select(a => new {
+                IEnumerable<Appointment> results = allAppointments;
+
+                // CHỈ LỌC THEO TỪ KHÓA (TÌM TRONG TIÊU ĐỀ HOẶC MÔ TẢ)
+                if (!string.IsNullOrEmpty(req.Keyword))
+                {
+                    var kw = RemoveDiacritics(req.Keyword);
+                    results = results.Where(a =>
+                        (!string.IsNullOrEmpty(a.Title) && RemoveDiacritics(a.Title).Contains(kw)) ||
+                        (!string.IsNullOrEmpty(a.Description) && RemoveDiacritics(a.Description).Contains(kw))
+                    );
+                }
+
+                var finalResults = results.ToList();
+
+                var calendarEvents = finalResults.Select(a => new {
                     id = a.Id,
                     title = a.Title,
                     location = a.Location,
@@ -236,7 +254,32 @@ namespace AddCalendarAppointment.Controllers
             }
         }
 
-        // Class dùng để hứng dữ liệu JSON từ AJAX gửi lên
+        private string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return text;
+
+            // Chuyển hết thành chữ thường trước
+            text = text.ToLower();
+
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            var stringBuilder = new StringBuilder(text.Length);
+
+            foreach (char c in normalizedString)
+            {
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder
+                .ToString()
+                .Normalize(NormalizationForm.FormC)
+                .Replace("đ", "d"); // Xử lý riêng chữ đ của tiếng Việt
+        }
+
+        // Đảm bảo Class này vẫn giữ các dấu ? (nullable) để tránh lỗi 400 Bad Request
         public class SearchRequest
         {
             public string? Keyword { get; set; }
@@ -246,9 +289,8 @@ namespace AddCalendarAppointment.Controllers
             public string? FromDate { get; set; }
             public string? ToDate { get; set; }
         }
-    }
 
-    public class CreateAppointmentRequest
+        public class CreateAppointmentRequest
     {
         public string Title { get; set; }
         public DateTime StartTime { get; set; }
