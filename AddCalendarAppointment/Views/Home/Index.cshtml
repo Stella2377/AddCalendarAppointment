@@ -359,3 +359,23 @@
         </div>
     </div>
 </div>
+
+
+<!-- Modal Hỏi ý kiến khi Trùng Lịch -->
+<div class="modal fade" id="overlapConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i> Trùng lịch!</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Khung giờ này đã có sự kiện khác. Bạn muốn xử lý như thế nào?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chọn giờ khác</button>
+                <button type="button" id="btn-replace-overlap" class="btn btn-primary">Thay thế sự kiện cũ</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -291,8 +291,10 @@ function loadAppointments() {
         url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
+            // Xóa các sự kiện cũ trên UI
             $('.appointment-block').remove();
 
+            // TIẾN HÀNH VẼ TRỰC TIẾP HTML RA LỊCH (Không chia cột nữa)
             data.forEach(function (evt) {
                 let dateStr = evt.start.split('T')[0];
                 let startDate = new Date(evt.start);
@@ -306,17 +308,14 @@ function loadAppointments() {
 
                 if ($column.length > 0) {
                     let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-                        " - " +
-                        endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                        " - " + endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
                     let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
-
-                    // Mã hóa mảng guests để nhét vào HTML an toàn
                     let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
                     let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                     let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
-                    let notifStr = evt.notification || '30 minutes before';
 
+                    // Cấu trúc HTML Khối sự kiện (Mặc định cố định width 95% và left 0)
                     let blockHtml = `
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
@@ -333,7 +332,7 @@ function loadAppointments() {
                              data-teamname="${evt.teamName || ''}"
                              data-owneremail="${evt.ownerEmail || ''}"
                              draggable="true" 
-                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; background-color: ${evt.color}; overflow: hidden;">
+                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
                             <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                             <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
                                 ${timeString} ${locString}
@@ -344,6 +343,7 @@ function loadAppointments() {
                     $column.append(blockHtml);
                 }
             });
+
             applyColorFilter();
         },
         error: function (err) {
