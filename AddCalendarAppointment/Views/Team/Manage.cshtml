@@ -1,4 +1,4 @@
-﻿@model IEnumerable<AddCalendarAppointment.Models.Team>
+@model IEnumerable<AddCalendarAppointment.Models.Team>
 @using Microsoft.AspNetCore.Http
 @{
     ViewData["Title"] = "Quản lý Nhóm";
@@ -120,19 +120,29 @@
     </div>
 </div>
 
-<!-- Modal Chi tiết nhóm -->
+<!-- Modal Chi tiết nhóm (ĐÃ SỬA: Lớn hơn và thêm mục Meeting) -->
 <div class="modal fade" id="teamDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="detailTeamName">Chi tiết nhóm</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <h6>Danh sách thành viên:</h6>
-                <ul class="list-group" id="memberList">
-                    <!-- Danh sách thành viên sẽ được load bằng JavaScript ở đây -->
-                </ul>
+                <div class="row">
+                    <div class="col-md-6 border-end">
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-users me-2"></i>Danh sách thành viên:</h6>
+                        <ul class="list-group list-group-flush" id="memberList">
+                            <!-- Danh sách thành viên -->
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-calendar-check me-2"></i>Group Meetings (Public):</h6>
+                        <div id="groupMeetingList">
+                            <!-- Danh sách Group Meeting -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -148,12 +158,75 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="addMemberTeamId" />
-                <label class="form-label">Nhập email thành viên</label>
-                <textarea class="form-control" id="addMemberEmails" rows="2"></textarea>
+                <input type="email" id="memberEmail" class="form-control" placeholder="Nhập email thành viên..." required />
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-success" onclick="submitAddMember()">Thêm</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddMember()">Thêm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chi tiết Cuộc họp Nhóm -->
+<div class="modal fade" id="meetingDetailModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" style="width: 360px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <!-- Header Tools (Giống Calendar) -->
+            <div class="d-flex justify-content-end align-items-center p-2 bg-light" style="border-bottom: 1px solid #f1f3f4;">
+                <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-trash"></i></button>
+                <button type="button" class="btn btn-sm text-muted px-2 border-0 shadow-none" data-bs-dismiss="modal"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="modal-body p-3">
+                <!-- Title & Time -->
+                <div class="d-flex align-items-start mb-3">
+                    <div class="mt-1 me-3 text-center" style="width: 24px;">
+                        <div id="m-detail-color" style="width: 14px; height: 14px; border-radius: 4px; display: inline-block;"></div>
+                    </div>
+                    <div>
+                        <h4 id="m-detail-title" class="mb-1" style="font-size: 18px; color: #3c4043;"></h4>
+                        <div id="m-detail-time" style="font-size: 14px; color: #3c4043;"></div>
+                    </div>
+                </div>
+
+                <!-- Guests List -->
+                <div id="m-detail-guests-row" class="d-flex align-items-start mb-3">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-users fs-5"></i></div>
+                    <div class="flex-grow-1">
+                        <div id="m-detail-participant-count" style="font-size: 14px; color: #3c4043;" class="mb-2"></div>
+                        <div id="m-detail-participants"></div>
+                    </div>
+                </div>
+
+                <!-- Notification -->
+                <div class="d-flex align-items-center mb-3">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-bell fs-5"></i></div>
+                    <div id="m-detail-notification" style="font-size: 14px; color: #3c4043;"></div>
+                </div>
+
+                <!-- Organizer/Calendar Name -->
+                <div class="d-flex align-items-center mb-3">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-calendar-alt fs-5"></i></div>
+                    <div id="m-detail-organizer" style="font-size: 14px; color: #3c4043;"></div>
+                </div>
+
+                <!-- Visibility -->
+                <div class="d-flex align-items-center mb-1">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-eye fs-5"></i></div>
+                    <div id="m-detail-visibility" style="font-size: 14px; color: #3c4043; font-weight: 500;"></div>
+                </div>
+
+                <!-- Description & Location (Optional) -->
+                <div id="m-detail-loc-row" class="d-none align-items-start mt-3">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-map-marker-alt fs-5"></i></div>
+                    <div id="m-detail-location" style="font-size: 14px; color: #3c4043;"></div>
+                </div>
+                <div id="m-detail-desc-row" class="d-none align-items-start mt-3">
+                    <div class="me-3 text-muted text-center" style="width: 24px;"><i class="fas fa-align-left fs-5"></i></div>
+                    <div id="m-detail-description" style="font-size: 14px; color: #3c4043; white-space: pre-wrap;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -191,17 +264,19 @@
 
 @section Scripts {
     <script>
+        let currentGroupMeetings = [];
+
         // 1. Xử lý khi bấm nút "Chi tiết"
         function showTeamDetails(teamId) {
             fetch(`/Team/GetTeamDetails?teamId=${teamId}`)
                 .then(response => response.json())
                 .then(data => {
+                    currentGroupMeetings = data.groupMeetings;
                     document.getElementById('detailTeamName').innerText = data.teamName;
 
+                    // --- Render Danh sách thành viên ---
                     const memberList = document.getElementById('memberList');
                     memberList.innerHTML = '';
-
-                    // Biến kiểm tra xem người đang đăng nhập CÓ PHẢI LÀ TRƯỞNG NHÓM không
                     const isCurrentUserOwner = (data.currentUserId === data.ownerId);
 
                     data.members.forEach(member => {
@@ -210,29 +285,140 @@
                             : '<span class="badge bg-secondary">Thành viên</span>';
 
                         let deleteBtn = '';
-                        // ĐIỀU KIỆN VẼ THÙNG RÁC:
-                        // - Bạn phải là trưởng nhóm (isCurrentUserOwner)
-                        // - Và người bị xóa KHÔNG PHẢI là trưởng nhóm (member.id !== data.ownerId)
                         if (isCurrentUserOwner && member.id !== data.ownerId) {
                             deleteBtn = `<i class="fa-solid fa-trash-can text-danger ms-3" style="cursor:pointer;"
                                                     title="Xóa thành viên" onclick="removeMember('${teamId}', '${member.id}')"></i>`;
                         }
 
-                        // Gói cái badge và nút xóa vào 1 div cho nó thẳng hàng bên phải
                         memberList.innerHTML += `
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <span>${member.username} (${member.email})</span>
-                                        <div class="d-flex align-items-center">
-                                            ${roleBadge}
-                                            ${deleteBtn}
-                                        </div>
-                                    </li>`;
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="small">${member.username} (${member.email})</span>
+                                <div class="d-flex align-items-center">
+                                    ${roleBadge}
+                                    ${deleteBtn}
+                                </div>
+                            </li>`;
                     });
+
+                    // --- Render Danh sách Group Meetings ---
+                    const meetingList = document.getElementById('groupMeetingList');
+                    meetingList.innerHTML = '';
+
+                    if (!data.groupMeetings || data.groupMeetings.length === 0) {
+                        meetingList.innerHTML = '<div class="text-muted small italic">Không có cuộc họp công khai nào sắp tới.</div>';
+                    } else {
+                        data.groupMeetings.forEach(meeting => {
+                            let joinBtn = '';
+                            if (data.currentUserId === meeting.creatorId) {
+                                joinBtn = `<span class="badge bg-light text-dark border">Của bạn</span>`;
+                            } else if (meeting.isJoined) {
+                                joinBtn = `<span class="text-muted small fw-bold" style="opacity: 0.6;"><i class="fa-solid fa-check me-1"></i>Joined</span>`;
+                            } else {
+                                joinBtn = `<button class="btn btn-sm btn-success rounded-pill px-3" onclick="joinMeetingById('${meeting.id}', '${teamId}')">Join</button>`;
+                            }
+
+                            meetingList.innerHTML += `
+                                <div class="card mb-2 border-light shadow-sm" style="cursor: pointer;" onclick="showMeetingDetail('${meeting.id}')">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-bold text-primary small">${meeting.title || '(No title)'}</div>
+                                                <div class="text-muted" style="font-size: 0.75rem;">
+                                                    <i class="fa-solid fa-user me-1"></i> ${meeting.creatorName}<br/>
+                                                    <i class="fa-solid fa-clock me-1"></i> ${meeting.startTime}
+                                                </div>
+                                            </div>
+                                            <div onclick="event.stopPropagation()">
+                                                ${joinBtn}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>`;
+                        });
+                    }
 
                     var detailsModal = new bootstrap.Modal(document.getElementById('teamDetailsModal'));
                     detailsModal.show();
                 })
                 .catch(error => console.error('Lỗi:', error));
+        }
+
+        function joinMeetingById(appointmentId, teamId) {
+            if (!appointmentId) return;
+            if (confirm("Bạn muốn tham gia cuộc họp này?")) {
+                fetch(`/api/Appointment/join/${appointmentId}`, {
+                    method: 'POST'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Đã tham gia thành công!");
+                        showTeamDetails(teamId); // Reload modal content
+                    } else {
+                        alert(data.message || "Lỗi khi tham gia.");
+                    }
+                });
+            }
+        }
+
+        function showMeetingDetail(meetingId) {
+            const meeting = currentGroupMeetings.find(m => m.id === meetingId);
+            if (!meeting) return;
+
+            document.getElementById('m-detail-title').innerText = meeting.title || "(No title)";
+            document.getElementById('m-detail-time').innerText = `${meeting.startTime} - ${meeting.endTime}`;
+            document.getElementById('m-detail-color').style.backgroundColor = meeting.color;
+            document.getElementById('m-detail-notification').innerText = meeting.notification || "30 minutes before";
+            document.getElementById('m-detail-organizer').innerText = meeting.creatorName;
+            document.getElementById('m-detail-visibility').innerText = "Public for: " + (document.getElementById('detailTeamName').innerText);
+
+            const locRow = document.getElementById('m-detail-loc-row');
+            if (meeting.location) {
+                document.getElementById('m-detail-location').innerText = meeting.location;
+                locRow.classList.remove('d-none');
+                locRow.classList.add('d-flex');
+            } else {
+                locRow.classList.add('d-none');
+                locRow.classList.remove('d-flex');
+            }
+
+            const descRow = document.getElementById('m-detail-desc-row');
+            if (meeting.description) {
+                document.getElementById('m-detail-description').innerText = meeting.description;
+                descRow.classList.remove('d-none');
+                descRow.classList.add('d-flex');
+            } else {
+                descRow.classList.add('d-none');
+                descRow.classList.remove('d-flex');
+            }
+
+            const pCount = document.getElementById('m-detail-participant-count');
+            const pList = document.getElementById('m-detail-participants');
+            pList.innerHTML = '';
+            
+            if (meeting.participants && meeting.participants.length > 0) {
+                pCount.innerText = `${meeting.participants.length} participant${meeting.participants.length > 1 ? 's' : ''}`;
+                meeting.participants.forEach(email => {
+                    const firstLetter = email.charAt(0).toUpperCase();
+                    // Đánh dấu Organizer nếu trùng email
+                    let roleTag = (email === meeting.ownerEmail) ? ' <span class="text-muted small">(Organizer)</span>' : '';
+                    
+                    pList.innerHTML += `
+                        <div class="d-flex align-items-center mb-2">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">
+                                ${firstLetter}
+                            </div>
+                            <div style="font-size: 14px; color: #3c4043;">
+                                ${email}${roleTag}
+                            </div>
+                        </div>`;
+                });
+            } else {
+                pCount.innerText = "0 participants";
+            }
+
+            const mModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('meetingDetailModal'));
+            mModal.show();
         }
 
         // Xử lý khi bấm vào icon thùng rác

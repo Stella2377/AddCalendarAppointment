@@ -1,4 +1,4 @@
-﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Data;
 using AddCalendarAppointment.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +40,6 @@ namespace AddCalendarAppointment.Controllers
             return View(myTeams);
         }
 
-        // 1. Logic xem chi tiết thành viên
         [HttpGet]
         public async Task<IActionResult> GetTeamDetails(Guid teamId)
         {
@@ -50,6 +49,10 @@ namespace AddCalendarAppointment.Controllers
 
             var team = await _context.Teams
                 .Include(t => t.Members)
+                .Include(t => t.Appointments)
+                    .ThenInclude(a => a.Owner)
+                .Include(t => t.Appointments)
+                    .ThenInclude(a => a.Guests)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
 
             if (team == null) return NotFound();
@@ -61,12 +64,36 @@ namespace AddCalendarAppointment.Controllers
                 role = (m.Id == team.OwnerId) ? "Trưởng nhóm" : "Thành viên"
             }).OrderBy(m => m.role == "Trưởng nhóm" ? 0 : 1).ToList();
 
+            // Lấy danh sách các cuộc họp Public của Team này (Chỉ lấy các cuộc họp trong tương lai)
+            var now = DateTime.Now;
+            var groupMeetings = team.Appointments
+                .Where(a => a.Visibility == VisibilityType.Public && a.StartTime > now && !a.IsDeleted)
+                .OrderBy(a => a.StartTime)
+                .Select(a => new {
+                    id = a.Id,
+                    title = a.Title,
+                    description = a.Description,
+                    location = a.Location,
+                    startTime = a.StartTime.ToString("dd/MM/yyyy HH:mm"),
+                    endTime = a.EndTime.ToString("dd/MM/yyyy HH:mm"),
+                    color = a.ColorCategory ?? "#039be5",
+                    creatorName = a.Owner.Username,
+                    creatorId = a.OwnerId,
+                    ownerEmail = a.Owner.Email,
+                    notification = a.Notification ?? "30 minutes before",
+                    isJoined = a.Guests != null && a.Guests.Any(g => g.UserId == currentUserId),
+                    participants = (a.Guests != null 
+                        ? new[] { a.Owner.Email }.Concat(a.Guests.Select(g => g.User.Email)).ToList()
+                        : new List<string> { a.Owner.Email })
+                }).ToList();
+
             return Json(new
             {
                 teamName = team.Name,
-                currentUserId = currentUserId, // Truyền ID người đang đăng nhập
-                ownerId = team.OwnerId,        // Truyền ID trưởng nhóm
-                members = membersList
+                currentUserId = currentUserId,
+                ownerId = team.OwnerId,
+                members = membersList,
+                groupMeetings = groupMeetings
             });
         }
 

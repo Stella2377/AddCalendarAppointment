@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Calendar";
     // Thiết lập mặc định ban đầu
     int ViewDays = 7;
@@ -73,7 +73,6 @@
                     <span>-</span>
                     <input type="time" id="popover-end-time" class="form-control form-control-sm border-0 bg-light">
                 </div>
-                <small class="text-muted">Time zone • Does not repeat</small>
             </div>
         </div>
 
@@ -100,6 +99,14 @@
             <input type="text" id="popover-description" class="form-control form-control-sm border-0 bg-light" placeholder="Add description">
         </div>
 
+        <!-- Section chọn Team (mặc định ẩn) -->
+        <div id="team-selection-row" class="d-none align-items-center mb-3 px-3">
+            <div class="me-3 text-muted"><i class="bi bi-people fs-5"></i></div>
+            <select id="team-dropdown" class="form-select form-select-sm border-0 bg-light w-100">
+                <option value="">-- Select Team --</option>
+            </select>
+        </div>
+
         <!-- Lịch & Thông báo -->
         <div class="d-flex align-items-start mb-2 px-3">
             <div class="me-3 mt-1 text-muted"><i class="bi bi-calendar2-event fs-5"></i></div>
@@ -115,18 +122,9 @@
                 <div class="d-flex gap-2 mb-3">
                     <select class="form-select form-select-sm border-0 bg-light w-auto text-muted"><option>Busy</option><option>Free</option></select>
                     <select id="popover-visibility" class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                        <option value="0">Default visibility</option>
+                        <option value="0">Private</option>
                         <option value="1">Public</option>
-                        <option value="2">Private</option>
                     </select>
-                </div>
-
-                <!-- Container chứa danh sách Team, mặc định ẩn (d-none) -->
-                <div id="team-selection-container" class="mt-2 d-none">
-                    <label class="small text-muted fw-bold">Chia sẻ với Team (Bạn :</label>
-                    <div id="team-checkbox-list" class="d-flex flex-wrap gap-2 mt-1" style="max-height: 100px; overflow-y: auto;">
-                        <!-- Javascript sẽ tự động đổ các checkbox vào đây -->
-                    </div>
                 </div>
 
                 <!-- Danh sách Notification -->
@@ -148,7 +146,6 @@
 
     <!-- Footer -->
     <div class="d-flex justify-content-end align-items-center px-3 py-3 border-top">
-        <button class="btn btn-light btn-sm me-2 text-primary fw-bold bg-transparent">More options</button>
         <button id="btn-save-event" class="btn btn-primary px-4 rounded-pill">Save</button>
     </div>
 </div>
@@ -160,8 +157,6 @@
     <div class="d-flex justify-content-end align-items-center p-2 bg-light" style="border-bottom: 1px solid #f1f3f4;">
         <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-pen"></i></button>
         <button id="btn-delete-event" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-trash"></i></button>
-        <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-envelope"></i></button>
-        <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-ellipsis-v"></i></button>
         <button id="btn-close-detail" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-times"></i></button>
     </div>
 
@@ -178,13 +173,7 @@
             </div>
         </div>
 
-        <!-- Invite via link -->
-        <div class="d-flex align-items-start mb-3">
-            <div class="me-3 detail-icon" style="width: 24px;"></div>
-            <button id="btn-invite-link" class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="color: #1a73e8; border-color: #dadce0; font-weight: 500;">
-                <i class="fas fa-link me-1"></i> Invite via link
-            </button>
-        </div>
+
 
         <!-- Google Meet (Mock) - Ẩn mặc định -->
         <div id="detail-meet-row" class="d-none align-items-start mb-3">
@@ -228,6 +217,12 @@
         <div class="d-flex align-items-center mb-1">
             <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-calendar-alt fs-5"></i></div>
             <div id="detail-calendar-name" style="font-size: 14px; color: #3c4043;">Trương Thị Ngọc Huyền</div>
+        </div>
+
+        <!-- Visibility info (ĐÃ SỬA) -->
+        <div id="detail-visibility-row" class="d-none align-items-center mb-1">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-eye fs-5"></i></div>
+            <div id="detail-visibility-text" style="font-size: 14px; color: #3c4043; font-weight: 500;"></div>
         </div>
     </div>
 </div>

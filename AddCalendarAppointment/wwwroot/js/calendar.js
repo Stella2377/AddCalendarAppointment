@@ -1,4 +1,4 @@
-﻿let currDate = new Date();
+let currDate = new Date();
 let currentViewMode = 7; // Mặc định là 7 ngày (Week)
 
 // ==========================================
@@ -328,6 +328,9 @@ function loadAppointments() {
                              data-location="${locHtmlStr}"
                              data-description="${descStr}"
                              data-guests="${guestsJson}"
+                             data-visibility="${evt.visibility}"
+                             data-teamname="${evt.teamName || ''}"
+                             data-owneremail="${evt.ownerEmail || ''}"
                              draggable="true" 
                              style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; background-color: ${evt.color}; overflow: hidden;">
                             <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
@@ -613,6 +616,11 @@ $(document).ready(function () {
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
         $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
 
+        // Reset visibility dropdown
+        $('#popover-visibility').val('0');
+        $('#team-selection-row').addClass('d-none');
+        $('#team-dropdown').empty().append('<option value="">-- Select Team --</option>');
+
         // --- CĂN CHỈNH TỌA ĐỘ VÀ SQUISH POPOVER (Phần này giữ nguyên của bạn) ---
         let rect = $ghostEvent[0].getBoundingClientRect();
         let popoverLeft = rect.right + 10;
@@ -740,6 +748,9 @@ $(document).ready(function () {
         let guestsRaw = block.attr('data-guests');
         let guests = JSON.parse(decodeURIComponent(guestsRaw || '%5B%5D'));
 
+        let visibility = block.attr('data-visibility');
+        let teamName = block.attr('data-teamname');
+
         if (!startStr || !endStr) return;
 
         let start = new Date(startStr);
@@ -772,16 +783,33 @@ $(document).ready(function () {
             $('#detail-description-row').removeClass('d-flex').addClass('d-none');
         }
 
-        // 3. Guests
+        // 3. Guests & Organizer
+        let ownerEmail = block.attr('data-owneremail');
+        let allParticipants = [];
+        if (ownerEmail) allParticipants.push({ email: ownerEmail, isOwner: true });
         if (guests && guests.length > 0) {
+            guests.forEach(g => {
+                if (g !== ownerEmail) allParticipants.push({ email: g, isOwner: false });
+            });
+        }
+
+        if (allParticipants.length > 0) {
             $('#detail-guests-row').removeClass('d-none').addClass('d-flex');
-            $('#detail-guest-count').text(`${guests.length} guest${guests.length > 1 ? 's' : ''}`);
+            $('#detail-guest-count').text(`${allParticipants.length} participant${allParticipants.length > 1 ? 's' : ''}`);
 
             let guestHtml = '';
-            guests.forEach(email => {
-                // Tạo một cái Avatar ảo từ chữ cái đầu của email
-                let firstLetter = email.charAt(0).toUpperCase();
-                guestHtml += `<div class="d-flex align-items-center mb-2"><div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">${firstLetter}</div><div style="font-size: 14px; color: #3c4043; word-break: break-all;">${email}</div></div>`;
+            allParticipants.forEach(p => {
+                let firstLetter = p.email.charAt(0).toUpperCase();
+                let roleTag = p.isOwner ? ' <span class="text-muted small">(Organizer)</span>' : '';
+                guestHtml += `
+                    <div class="d-flex align-items-center mb-2">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">
+                            ${firstLetter}
+                        </div>
+                        <div style="font-size: 14px; color: #3c4043; word-break: break-all;">
+                            ${p.email}${roleTag}
+                        </div>
+                    </div>`;
             });
             $('#detail-guest-list').html(guestHtml);
         } else {
@@ -800,6 +828,14 @@ $(document).ready(function () {
 
         // Gán tên vừa tìm được vào popover
         $('#detail-calendar-name').text(calendarName);
+
+        // --- XỬ LÝ VISIBILITY ---
+        if (visibility === "1" && teamName && teamName.trim() !== "") {
+            $('#detail-visibility-row').removeClass('d-none').addClass('d-flex');
+            $('#detail-visibility-text').text(`Public for: ${teamName}`);
+        } else {
+            $('#detail-visibility-row').removeClass('d-flex').addClass('d-none');
+        }
 
         // --- LOGIC TÍNH TỌA ĐỘ VÀ CHỐNG TRÀN MÀN HÌNH ---
         let $detailPopover = $('#event-detail-popover');
@@ -986,7 +1022,8 @@ $(document).ready(function () {
             IsRecurring: false,
             RecurringRule: 0,
             GuestEmails: guestEmails,
-            Notification: selectedNotification
+            Notification: selectedNotification,
+            TeamId: $('#team-dropdown').val() || null
         };
 
         $('#btn-save-event').prop('disabled', true).text('Đang lưu...');
@@ -1015,6 +1052,35 @@ $(document).ready(function () {
                 $('#btn-save-event').prop('disabled', false).text('Save');
             }
         });
+    });
+
+    // Dùng Event Delegation để đảm bảo sự kiện luôn bắt được
+    $(document).on('change', '#popover-visibility', function () {
+        const visibility = $(this).val();
+        const $row = $('#team-selection-row');
+        const $dropdown = $('#team-dropdown');
+
+        if (visibility === "1") { // Nếu chọn Public
+            // Gọi API lấy danh sách Team của user
+            $.get('/api/Appointment/get-user-teams', function (teams) {
+                if (teams && teams.length > 0) {
+                    let html = '<option value="">-- Select Team --</option>';
+                    teams.forEach(team => {
+                        html += `<option value="${team.id}">${team.name}</option>`;
+                    });
+                    $dropdown.html(html);
+                    $row.removeClass('d-none').addClass('d-flex'); 
+                } else {
+                    $dropdown.html('<option value="">No teams found</option>');
+                    $row.removeClass('d-none').addClass('d-flex');
+                }
+            }).fail(function() {
+                console.error("Failed to load teams");
+            });
+        } else {
+            $row.addClass('d-none').removeClass('d-flex'); 
+            $dropdown.empty().append('<option value="">-- Select Team --</option>');
+        }
     });
 });
 
@@ -1072,31 +1138,8 @@ $(document).on('change', '.calendar-color-filter', function () {
 
 
 // ==========================================
-// TÍNH NĂNG SHARE LINK & JOIN BẰNG CODE
+// TÍNH NĂNG JOIN BẰNG CODE
 // ==========================================
-
-// 1. Mở modal Invite và Copy Link
-$(document).on('click', '#btn-invite-link', function () {
-    let currentEventId = $('#btn-delete-event').data('id'); // Lấy ID đang mở trong detail
-    // Giả sử mã code được gen bằng ID hoặc một API nào đó. Ở đây mình làm mẫu link có code
-    let mockCode = currentEventId.substring(0, 8); // Lấy 8 ký tự đầu của Guid làm code
-    let fullUrl = window.location.origin + "/join?code=" + mockCode;
-
-    $('#meetingLinkUrl').val(fullUrl);
-    $('#event-detail-popover').css('z-index', '1040');
-    $('#inviteModal').modal('show');
-});
-
-$('#btnCopyLink').on('click', function () {
-    let linkInput = document.getElementById("meetingLinkUrl");
-    linkInput.select();
-    navigator.clipboard.writeText(linkInput.value).then(function () {
-        // Tùy biến nút copy để có UX tốt hơn
-        let originalText = $('#btnCopyLink').text();
-        $('#btnCopyLink').text('Copied!').removeClass('btn-primary').addClass('btn-success');
-        setTimeout(() => { $('#btnCopyLink').text(originalText).removeClass('btn-success').addClass('btn-primary'); }, 2000);
-    });
-});
 
 // 2. Xử lý submit mã Code để Join
 $('#btnSubmitJoinCode').on('click', function () {

@@ -1,4 +1,4 @@
-﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Data;
 using AddCalendarAppointment.Models;
 using AddCalendarAppointment.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -51,6 +51,8 @@ namespace AddCalendarAppointment.Controllers
             var appointments = await _context.Appointments
                 .Include(a => a.Guests)
                     .ThenInclude(g => g.User)
+                .Include(a => a.Team) // Thêm Team để lấy tên
+                .Include(a => a.Owner) // Thêm Owner để lấy email
                 .Where(a => !a.IsDeleted &&
                             (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId)))
                 .ToListAsync();
@@ -60,12 +62,15 @@ namespace AddCalendarAppointment.Controllers
                 id = a.Id,
                 title = a.Title,
                 location = a.Location,
-                description = a.Description, // Thêm Description
+                description = a.Description,
                 start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
                 end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
                 color = a.ColorCategory ?? "#039be5",
                 notification = a.Notification ?? "30 minutes before",
-                guests = a.Guests != null ? a.Guests.Select(g => g.User.Email).ToList() : new List<string>()
+                guests = a.Guests != null ? a.Guests.Select(g => g.User.Email).ToList() : new List<string>(),
+                visibility = (int)a.Visibility,
+                teamName = a.Team?.Name,
+                ownerEmail = a.Owner?.Email
             });
 
             return Ok(calendarEvents);
@@ -90,7 +95,8 @@ namespace AddCalendarAppointment.Controllers
                 RecurringRule = req.RecurringRule,
                 OwnerId = userId,
                 Guests = new List<AppointmentGuest>(),
-                Notification = req.Notification
+                Notification = req.Notification,
+                TeamId = req.TeamId
             };
 
             // 2. Tìm kiếm và thêm Guests từ danh sách Email
@@ -117,6 +123,24 @@ namespace AddCalendarAppointment.Controllers
                 return BadRequest(new { error = result.errorMessage });
 
             return Ok(new { success = true });
+        }
+
+        [HttpGet("get-user-teams")]
+        public async Task<IActionResult> GetUserTeams()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var teams = await _context.Teams
+                    .Where(t => t.Members.Any(m => m.Id == userId))
+                    .Select(t => new { id = t.Id, name = t.Name })
+                    .ToListAsync();
+                return Ok(teams);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("search-users")]
@@ -205,6 +229,53 @@ namespace AddCalendarAppointment.Controllers
             }
         }
 
+        [HttpPost("join/{id}")]
+        public async Task<IActionResult> Join(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var targetMeeting = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+                if (targetMeeting == null)
+                    return NotFound(new { success = false, message = "Cuộc họp không tồn tại!" });
+
+                // Kiểm tra trùng lịch
+                var overlapAppt = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .Where(a => !a.IsDeleted
+                             && a.StartTime < targetMeeting.EndTime
+                             && a.EndTime > targetMeeting.StartTime)
+                    .Where(a => a.OwnerId == userId || (a.Guests != null && a.Guests.Any(g => g.UserId == userId)))
+                    .FirstOrDefaultAsync();
+
+                if (overlapAppt != null)
+                {
+                    return Ok(new { success = false, message = $"Trùng lịch với: '{overlapAppt.Title}' ({overlapAppt.StartTime:HH:mm}-{overlapAppt.EndTime:HH:mm})" });
+                }
+
+                if (targetMeeting.Guests == null) targetMeeting.Guests = new List<AppointmentGuest>();
+
+                if (!targetMeeting.Guests.Any(g => g.UserId == userId))
+                {
+                    targetMeeting.Guests.Add(new AppointmentGuest
+                    {
+                        UserId = userId,
+                        Status = GuestStatus.Accepted
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
         [HttpPost("join-by-code")]
         public async Task<IActionResult> JoinByCode([FromBody] string meetingCode)
         {
@@ -277,6 +348,7 @@ namespace AddCalendarAppointment.Controllers
             public RecurringType RecurringRule { get; set; }
             public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
             public string? Notification { get; set; }
+            public Guid? TeamId { get; set; }
         }
     }
 }
