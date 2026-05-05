@@ -1,6 +1,9 @@
 ﻿$(document).ready(function () {
     // --- KHỞI TẠO BIẾN TOÀN CỤC ---
     let currDate = new Date(); 
+    let currentViewMode = 7; // Mặc định là 7 ngày (Week)
+$(document).ready(function () {
+    syncAllCalendars();
 
     renderDynamicMiniCalendar(currDate);
     updateMainMonthTitle(currDate);
@@ -10,14 +13,15 @@
     // SỰ KIỆN ĐIỀU HƯỚNG
     // ==========================================
 
+    // Sửa lại selector cho Mini Calendar để khớp với ID trong file cshtml
     $('#mini-prev').on('click', function () {
         currDate.setMonth(currDate.getMonth() - 1);
-        renderDynamicMiniCalendar(currDate);
+        syncAllCalendars(); // Cập nhật toàn bộ để lịch chính đi theo
     });
 
     $('#mini-next').on('click', function () {
         currDate.setMonth(currDate.getMonth() + 1);
-        renderDynamicMiniCalendar(currDate);
+        syncAllCalendars(); // Cập nhật toàn bộ để lịch chính đi theo
     });
 
     $('#btn-today').on('click', function () {
@@ -25,24 +29,42 @@
         syncAllCalendars();
     });
 
-    $('#main-prev').on('click', function () {
+    $('#main-prev').off('click').on('click', function (e) {
+        e.preventDefault();
         const view = $('#viewSelector').val();
+        currentViewMode = parseInt(view);
+
         if (view === "7") currDate.setDate(currDate.getDate() - 7);
         else if (view === "1") currDate.setDate(currDate.getDate() - 1);
-        else currDate.setMonth(currDate.getMonth() - 1);
+        else if (view === "30") currDate.setMonth(currDate.getMonth() - 1);
+        else currDate.setDate(currDate.getDate() - currentViewMode);
 
         syncAllCalendars();
     });
 
-    $('#main-next').on('click', function () {
+    // Xử lý nút TIẾP THEO (Main Next)
+    $('#main-next').off('click').on('click', function (e) {
+        e.preventDefault();
         const view = $('#viewSelector').val();
+        currentViewMode = parseInt(view);
+
         if (view === "7") currDate.setDate(currDate.getDate() + 7);
         else if (view === "1") currDate.setDate(currDate.getDate() + 1);
-        else currDate.setMonth(currDate.getMonth() + 1);
+        else if (view === "30") currDate.setMonth(currDate.getMonth() + 1);
+        else currDate.setDate(currDate.getDate() + currentViewMode);
 
         syncAllCalendars();
     });
 
+    // Sự kiện đổi chế độ View (Day, Week...)
+    $('#viewSelector').on('change', function () {
+        currentViewMode = parseInt($(this).val());
+        // Cập nhật CSS Variable để chia cột
+        document.documentElement.style.setProperty('--col-count', currentViewMode);
+        syncAllCalendars();
+    });
+
+    // Hàm đồng bộ tất cả các thành phần lịch
     function syncAllCalendars() {
         renderDynamicMiniCalendar(currDate);
         updateMainMonthTitle(currDate);
@@ -50,12 +72,60 @@
         if (typeof loadAppointments === "function") {
             loadAppointments(); 
         }
+        renderMainCalendar(); // Vẽ lại lưới lịch chính
     }
 
     $('#btnToggleSidebar').on('click', function () {
         $('#sidebar').toggleClass('collapsed');
     });
 });
+
+// ==========================================
+// HÀM VẼ LƯỚI LỊCH CHÍNH (MAIN CALENDAR) - MỚI BỔ SUNG
+// ==========================================
+function renderMainCalendar() {
+    const $headerGrid = $('.calendar-header-grid');
+    const $calendarGrid = $('.calendar-grid');
+    const viewMode = parseInt($('#viewSelector').val() || 7);
+
+    // Xóa các cột cũ (Giữ lại cột GMT/Time-col)
+    $headerGrid.find('.day-header').remove();
+    $calendarGrid.find('.day-col').remove();
+
+    // Tính toán ngày bắt đầu hiển thị
+    let startDate = new Date(currDate);
+    if (viewMode === 7) {
+        // Nếu là tuần, đưa về ngày Thứ 2 (hoặc Chủ nhật tùy bạn, ở đây là Thứ 2)
+        let day = startDate.getDay();
+        let diff = startDate.getDate() - day + (day === 0 ? -6 : 1); 
+        startDate.setDate(diff);
+    }
+
+    for (let i = 0; i < viewMode; i++) {
+        let d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        
+        let dateStr = d.toISOString().split('T')[0];
+        let isToday = new Date().toDateString() === d.toDateString();
+        let activeClass = isToday ? 'active' : '';
+
+        // 1. Vẽ Header (THỨ + NGÀY)
+        $headerGrid.append(`
+            <div class="day-header ${activeClass}">
+                <div class="day-name">${d.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</div>
+                <div class="day-num">${d.getDate()}</div>
+            </div>
+        `);
+
+        // 2. Vẽ Cột ngày nội dung
+        $calendarGrid.append(`<div class="day-col" data-date="${dateStr}"></div>`);
+    }
+
+    // Sau khi vẽ khung xong, load dữ liệu sự kiện vào
+    if (typeof loadAppointments === "function") {
+        loadAppointments();
+    }
+}
 
 // ==========================================
 // HÀM VẼ MINI CALENDAR
@@ -70,8 +140,7 @@ function renderDynamicMiniCalendar(date) {
     const month = date.getMonth();
 
     const today = new Date();
-    const isCurrentMonth = (month === today.getMonth() && year === today.getFullYear());
-
+    
     const monthName = date.toLocaleString('default', { month: 'long' });
     $miniTitle.text(`${monthName} ${year}`);
 
@@ -89,42 +158,41 @@ function renderDynamicMiniCalendar(date) {
     // 2. Lấy ngày tháng hiện tại
     for (let i = 1; i <= lastDay; i++) {
         let status = '';
-        if (isCurrentMonth) {
-            if (i === today.getDate()) {
-                status = 'current-day';
-            } else if (i === date.getDate()) {
-                status = 'selected-day';
-            }
+        if (year === today.getFullYear() && month === today.getMonth() && i === today.getDate()) {
+            status = 'current-day';
+        } else if (i === date.getDate() && month === date.getMonth() && year === date.getFullYear()) {
+            status = 'selected-day';
         }
         days.push({ day: i, status: status });
     }
 
-    // 3. Lấy ngày tháng sau cho đủ 6 hàng (42 ô)
+    // 3. Lấy ngày tháng sau
     const remaining = 42 - days.length;
     for (let j = 1; j <= remaining; j++) {
         days.push({ day: j, status: 'text-muted' });
     }
 
-    // 4. Vẽ các hàng (tr) và cột (td) vào bảng
+    // 4. Vẽ bảng
     for (let i = 0; i < days.length; i += 7) {
         let $tr = $('<tr></tr>');
         days.slice(i, i + 7).forEach(d => {
             let $td = $(`<td>${d.day}</td>`);
-
             if (d.status === 'text-muted') {
                 $td.addClass('text-muted');
-                $td.css('cursor', 'default');
             } else {
                 if (d.status) $td.addClass(d.status);
-
                 $td.css('cursor', 'pointer').on('click', function () {
+                    // Khi click vào ngày ở Mini Calendar
                     currDate = new Date(year, month, d.day);
+                    // Cập nhật lại toàn bộ
+                    const view = $('#viewSelector').val();
+                    document.documentElement.style.setProperty('--col-count', view);
                     renderDynamicMiniCalendar(currDate);
                     updateMainMonthTitle(currDate);
-
                     if (typeof loadAppointments === "function") {
                         loadAppointments();
                     }
+                    renderMainCalendar();
                 });
             }
             $tr.append($td);
@@ -134,7 +202,7 @@ function renderDynamicMiniCalendar(date) {
 }
 
 // ==========================================
-// CÁC HÀM GỌI AJAX (BACKEND GIAO TIẾP)
+// CÁC HÀM GỌI AJAX & UTILS
 // ==========================================
 
 function loadAppointments() {
@@ -142,36 +210,36 @@ function loadAppointments() {
         url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
-            console.log("Dữ liệu trả về từ API:", data);
             // Xóa hết các event trên giao diện trước khi render cái mới
             $('.appointment-block').remove();
 
             data.forEach(function (evt) {
-                let dateStr = evt.start.split('T')[0]; // Lấy "YYYY-MM-DD"
+                let dateStr = evt.start.split('T')[0];
                 let startDate = new Date(evt.start);
                 let endDate = new Date(evt.end);
 
+    // Ngày tháng sau
+    const remaining = 42 - days.length;
+    for (let j = 1; j <= remaining; j++) {
+        days.push({ day: j, status: 'text-muted' });
+    }
+
                 // Tính toán vị trí Y (top) trên lưới (1 giờ = 60px, 1 phút = 1px)
                 let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
-                
-                // Tính toán thời lượng để quyết định chiều cao của khối (Height)
                 let durationMins = (endDate - startDate) / (1000 * 60); 
-                let heightPx = durationMins > 0 ? durationMins : 60; // Mặc định 60px (1 tiếng)
+                let heightPx = durationMins > 0 ? durationMins : 60;
 
-                // Tìm cột ngày tương ứng
                 let $column = $(`.day-col[data-date='${dateStr}']`);
 
                 console.log(`Tìm cột ngày ${dateStr}:`, $column.length > 0 ? "Thành công" : "Thất bại");
 
                 if ($column.length > 0) {
-                    // Format thời gian hiển thị (ví dụ: 9:00 AM)
                     let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + 
                                      " - " + 
                                      endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
                     let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
 
-                    // Render block HTML
                     let blockHtml = `
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
@@ -189,98 +257,15 @@ function loadAppointments() {
             });
         },
         error: function (err) {
-            console.error("Lỗi khi load appointments từ database:", err);
+            console.error("Lỗi khi load appointments:", err);
         }
     });
-}
-function updateAppointmentTime(id, date, hour, min, callback) {
-    // Logic tính toán DateTime sẽ gửi xuống API
-    let newStartTime = `${date}T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00`;
-
-    $.ajax({
-        url: `/api/appointment/edit-recurring/${id}?type=ThisEvent`,
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ StartTime: newStartTime }),
-        success: function (res) {
-            callback(true);
-        },
-        error: function (err) {
-            console.error(err);
-            callback(false);
-        }
-    });
-}
-
-function duplicateAppointment(originalId, targetTime, callback) {
-    let newStartTime = `${targetTime.date}T${targetTime.hour.toString().padStart(2, '0')}:${targetTime.minute.toString().padStart(2, '0')}:00`;
-
-    // Gọi lên Controller để xử lý logic Duplicate
-    $.ajax({
-        url: `/api/appointment/duplicate`, // API giả định
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ originalId: originalId, newStartTime: newStartTime }),
-        success: function (res) {
-            callback(res.newId); // Trả về ID của sự kiện vừa tạo
-        },
-        error: function () {
-            alert('Lỗi duplicate sự kiện');
-            callback(null);
-        }
-    });
-}
-
-function openDetailsModal(id) {
-    // 1. Fetch dữ liệu chi tiết từ server
-    // $.get(`/api/appointment/${id}`, function(data) { ... });
-
-    // 2. Điền data vào Modal
-    $('#detailModal').data('current-id', id);
-    $('#detailModalTitle').val('Data từ API...');
-
-    // 3. Mở Bootstrap modal
-    let myModal = new bootstrap.Modal(document.getElementById('detailModal'));
-    myModal.show();
-
 }
 
 function updateMainMonthTitle(date) {
     const $mainTitle = $('#main-month-title');
     if ($mainTitle.length) {
-        const monthStr = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const monthStr = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
         $mainTitle.text(monthStr);
     }
-}
-
-function updateMainCalendarGrid(date) {
-    let startOfWeek = new Date(date);
-    let day = startOfWeek.getDay(); // Lấy thứ trong tuần (0: CN, 6: T7)
-    startOfWeek.setDate(startOfWeek.getDate() - day); // Đưa về ngày Chủ Nhật đầu tuần
-
-    // Duyệt qua từng cột ngày để update lại thuộc tính data-date
-    $('.day-col').each(function (index) {
-        let currentDay = new Date(startOfWeek);
-        currentDay.setDate(startOfWeek.getDate() + index);
-
-        // Format ngày chuẩn yyyy-MM-dd
-        let yyyy = currentDay.getFullYear();
-        let mm = String(currentDay.getMonth() + 1).padStart(2, '0');
-        let dd = String(currentDay.getDate()).padStart(2, '0');
-        let dateStr = `${yyyy}-${mm}-${dd}`;
-
-        // Cập nhật lại data-date cho khung lưới
-        $(this).attr('data-date', dateStr);
-
-        // Cập nhật lại con số trên Header (hiển thị mùng mấy)
-        let $header = $('.day-header').eq(index);
-        $header.find('.day-num').text(currentDay.getDate());
-
-        // Highlight ngày hiện tại
-        if (currentDay.toDateString() === new Date().toDateString()) {
-            $header.addClass('active');
-        } else {
-            $header.removeClass('active');
-        }
-    });
 }

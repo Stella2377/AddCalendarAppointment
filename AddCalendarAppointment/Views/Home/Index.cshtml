@@ -1,53 +1,41 @@
 ﻿@{
     ViewData["Title"] = "Calendar";
-    // Giả lập Dữ liệu lấy từ Controller (Dựa trên Model UserSettings)
-    // Nếu User chọn view "Week", ViewDays = 7. Nếu chọn custom "3 days", ViewDays = 3.
+    // Thiết lập mặc định ban đầu
     int ViewDays = 7;
-
-    DateTime today = DateTime.Today;
-    DateTime startOfWeek = today.AddDays(-(int)today.DayOfWeek);
 }
 
 <style>
     :root {
+        /* Biến này sẽ được cập nhật động bằng JS khi đổi View */
         --col-count: @ViewDays;
     }
 </style>
 
-<div class="calendar-header-grid">
+<!-- HEADER LỊCH (Thứ, Ngày) -->
+<div class="calendar-header-grid" id="main-header-grid">
     <div class="time-header" style="font-size: 10px; color: #70757a; text-align: left; padding-left: 8px; margin-top: auto;">GMT+07</div>
     
-    @for (int i = 0; i < ViewDays; i++)
-    {
-        DateTime currentDay = startOfWeek.AddDays(i);
-        string activeClass = (currentDay.Date == DateTime.Today) ? "active" : ""; // Highlight ngày hôm nay
-        
-        <div class="day-header @activeClass">
-            <div class="day-name">@currentDay.ToString("ddd").ToUpper()</div>
-            <div class="day-num">@currentDay.Day</div>
-        </div>
-    }
+    <!-- JavaScript sẽ tự động render các .day-header vào đây -->
 </div>
 
+<!-- BODY LỊCH (Lưới giờ và Sự kiện) -->
 <div class="calendar-body-scroll">
-    <div class="calendar-grid">
+    <div class="calendar-grid" id="main-calendar-grid">
+        <!-- Cột hiển thị giờ (Cố định 24h) -->
         <div class="time-col">
-            @for (int h = 1; h <= 23; h++)
+            @for (int h = 0; h <= 23; h++)
             {
-                string ampm = h < 12 ? "AM" : "PM";
-                int displayHour = h <= 12 ? h : h - 12;
+                string ampm;
+                int displayHour;
+                if (h == 0) { displayHour = 12; ampm = "AM"; }
+                else if (h < 12) { displayHour = h; ampm = "AM"; }
+                else if (h == 12) { displayHour = 12; ampm = "PM"; }
+                else { displayHour = h - 12; ampm = "PM"; }
+
                 <div class="time-slot"><span>@displayHour @ampm</span></div>
             }
         </div>
 
-        @for (int i = 0; i < ViewDays; i++)
-        {
-            DateTime currentDay = startOfWeek.AddDays(i);
-
-            <!-- Quan trọng: Thêm thuộc tính data-date để Javascript Kéo-Thả có thể lấy được ngày -->
-            <div class="day-col" data-date="@currentDay.ToString("yyyy-MM-dd")">
-
-            </div>
-        }
+        <!-- JavaScript sẽ tự động render các .day-col vào đây -->
     </div>
 </div>
