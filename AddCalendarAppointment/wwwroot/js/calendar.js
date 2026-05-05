@@ -315,11 +315,13 @@ function loadAppointments() {
                     let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
                     let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                     let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                    let notifStr = evt.notification || '30 minutes before';
 
                     let blockHtml = `
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
                              data-title="${evt.title || '(No title)'}"
+                             data-notification="${notifStr}"
                              data-start="${evt.start}"
                              data-end="${evt.end}"
                              data-color="${evt.color}"
@@ -330,7 +332,7 @@ function loadAppointments() {
                              style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; background-color: ${evt.color}; overflow: hidden;">
                             <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                             <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
-                                ${timeString}
+                                ${timeString} ${locString}
                             </div>
                             <div class="resize-handle"></div>
                         </div>
@@ -338,7 +340,7 @@ function loadAppointments() {
                     $column.append(blockHtml);
                 }
             });
-            applyColorFilter();
+            applyColorFilter(); 
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -424,7 +426,11 @@ $(document).on('dragover', '.day-col', function (e) {
         
         // Tính và cập nhật text thời gian trực tiếp trên bóng
         let timeStr = formatTimeFromPixels(newTopPx, eventDurationMins);
-        $dragShadow.find('.time-loc').html(timeStr);
+        // Lấy lại địa điểm để không bị mất khi kéo
+        let locRaw = $dragShadow.attr('data-location');
+        let locHtml = locRaw ? `<br/>📍 ${locRaw}` : '';
+
+        $dragShadow.find('.time-loc').html(timeStr + locHtml);
     }
 });
 
@@ -674,12 +680,15 @@ $(document).ready(function () {
             let newHeight = Math.max(15, Math.round(rawHeight / 15) * 15);
             $resizeBlock.css('height', newHeight + 'px');
 
-            // Tính thời gian thực tế và update text
             let topPx = parseFloat($resizeBlock.css('top'));
             let timeStr = formatTimeFromPixels(topPx, newHeight);
 
+            // Lấy lại địa điểm để không bị mất khi kéo giãn
+            let locRaw = $resizeBlock.attr('data-location');
+            let locHtml = locRaw ? `<br/>📍 ${locRaw}` : '';
+
             // Tìm thẻ chứa text thời gian và ghi đè nội dung
-            $resizeBlock.find('.time-loc').html(timeStr);
+            $resizeBlock.find('.time-loc').html(timeStr + locHtml);
         }
     });
 
@@ -725,6 +734,7 @@ $(document).ready(function () {
         let id = block.attr('data-id');
         let location = block.attr('data-location');
         let description = block.attr('data-description');
+        let notification = block.attr('data-notification');
 
         // Giải mã JSON danh sách khách mời
         let guestsRaw = block.attr('data-guests');
@@ -778,9 +788,16 @@ $(document).ready(function () {
         }
 
         // Ánh xạ Tên lịch
-        let calendarName = "Sự kiện cá nhân";
-        if (color === "#039be5") calendarName = "Học thuật";
-        else if (color === "#33b679") calendarName = "Sinh hoạt CLB";
+        // Lấy danh sách tên lịch hiện tại từ Sidebar (bao gồm cả tên bạn đã đổi)
+        let categories = getCalendarCategories();
+
+        // Tìm kiếm xem màu của sự kiện này tương ứng với Tên lịch nào
+        let matchedCategory = categories.find(c => c.hex.toLowerCase() === (color || '').toLowerCase());
+
+        // Nếu tìm thấy thì lấy tên đó, nếu không thì để mặc định
+        let calendarName = matchedCategory ? matchedCategory.displayName : "Sự kiện cá nhân";
+
+        // Gán tên vừa tìm được vào popover
         $('#detail-calendar-name').text(calendarName);
 
         // --- LOGIC TÍNH TỌA ĐỘ VÀ CHỐNG TRÀN MÀN HÌNH ---
@@ -966,7 +983,8 @@ $(document).ready(function () {
             Visibility: parseInt($('#popover-visibility').val() || "0"),
             IsRecurring: false,
             RecurringRule: 0,
-            GuestEmails: guestEmails 
+            GuestEmails: guestEmails,
+            Notification: selectedNotification
         };
 
         $('#btn-save-event').prop('disabled', true).text('Đang lưu...');

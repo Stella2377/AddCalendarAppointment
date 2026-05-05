@@ -104,57 +104,91 @@
 
 		<div class="app-body">
 			<aside class="app-sidebar" id="sidebar">
-				<button class="btn-create" onclick="openCreateAppointmentModal()">
-					<img src="https://www.gstatic.com/images/branding/product/1x/google_plus_48dp.png" width="20" class="me-2" />
+			@{
+				// KIỂM TRA ĐƯỜNG DẪN HIỆN TẠI
+				// Trả về true nếu URL đang ở trang quản lý nhóm
+				bool isTeamPage = Context.Request.Path.Value != null && Context.Request.Path.Value.Contains("/Team/Manage", StringComparison.OrdinalIgnoreCase);
+			}
+
+			<!-- NÚT CREATE -->
+			@if (isTeamPage)
+			{
+				// Trạng thái mờ khi ở trang My Teams
+				<button class="btn-create" style="opacity: 0.5; cursor: not-allowed; pointer-events: none;">
+					<i class="fa-solid fa-plus me-2" style="font-size: 20px; color: #ea4335;"></i>
 					Create
 				</button>
+			}
+			else
+			{
+				// Trạng thái bình thường khi ở trang Calendar
+				<button class="btn-create" onclick="openCreateAppointmentModal()">
+					<i class="fa-solid fa-plus me-2" style="font-size: 20px; color: #ea4335;"></i>
+					Create
+				</button>
+			}
 
-				<div class="sidebar-section mt-4">
+			<!-- NÚT ĐIỀU HƯỚNG (MY TEAMS / BACK TO CALENDAR) -->
+			<div class="sidebar-section mt-4">
+				@if (isTeamPage)
+				{
+					// Nút Back to Calendar (Chỉ hiện ở trang Team)
+					<button class="btn btn-light w-100 text-start border-0 shadow-sm" onclick="window.location.href='/Home/Index'" style="border-radius: 20px; padding: 10px 15px; background: #fff;">
+						<i class="fa-solid fa-arrow-left me-2 text-primary"></i>
+						<span class="fw-bold" style="color: #3c4043; font-size: 0.9rem;">Back to Calendar</span>
+					</button>
+				}
+				else
+				{
+					// Nút My Teams (Chỉ hiện ở trang Calendar)
 					<button class="btn btn-light w-100 text-start border-0 shadow-sm" onclick="window.location.href='/Team/Manage'" style="border-radius: 20px; padding: 10px 15px; background: #fff;">
 						<i class="fa-solid fa-users me-2 text-primary"></i>
 						<span class="fw-bold" style="color: #3c4043; font-size: 0.9rem;">My teams</span>
 					</button>
-				</div>
+				}
+			</div>
 
-				<div class="sidebar-section mini-calendar mt-4">
-					<div class="d-flex justify-content-between align-items-center mb-2 px-2">
-						<span class="fw-bold" id="mini-month-title"></span>
-						<div>
-							<button class="btn btn-light btn-sm rounded-circle border-0" id="mini-prev">
-								<i class="fa-solid fa-chevron-left"></i>
-							</button>
-							<button class="btn btn-light btn-sm rounded-circle border-0 ms-1 me-3" id="mini-next">
-								<i class="fa-solid fa-chevron-right"></i>
-							</button>
-						</div>
+			<!-- MINI CALENDAR (Giữ nguyên của bạn) -->
+			<div class="sidebar-section mini-calendar mt-4">
+				<div class="d-flex justify-content-between align-items-center mb-2 px-2">
+					<span class="fw-bold" id="mini-month-title"></span>
+					<div>
+						<button class="btn btn-light btn-sm rounded-circle border-0" id="mini-prev">
+							<i class="fa-solid fa-chevron-left"></i>
+						</button>
+						<button class="btn btn-light btn-sm rounded-circle border-0 ms-1 me-3" id="mini-next">
+							<i class="fa-solid fa-chevron-right"></i>
+						</button>
 					</div>
-					<table>
-						<thead>
-							<tr>
-								<th class="text-danger">S</th>
-								<th>M</th>
-								<th>T</th>
-								<th>W</th>
-								<th>T</th>
-								<th>F</th>
-								<th>S</th>
-							</tr>
-						</thead>
-						<tbody id="mini-calendar-body"></tbody>
-					</table>
 				</div>
+				<table>
+					<thead>
+						<tr>
+							<th class="text-danger">S</th>
+							<th>M</th>
+							<th>T</th>
+							<th>W</th>
+							<th>T</th>
+							<th>F</th>
+							<th>S</th>
+						</tr>
+					</thead>
+					<tbody id="mini-calendar-body"></tbody>
+				</table>
+			</div>
 
-				<div class="sidebar-section mt-4">
-					<h6 class="text-muted mb-2" style="font-size: 13px; font-weight: bold;">My calendars</h6>
-					<!-- Danh sách lịch (kèm ô đổi tên) sẽ được JS tự động đổ vào đây -->
-					<div id="my-calendars-list"></div> 
-				</div>
-			</aside>
+			<!-- MY CALENDARS LIST (Giữ nguyên của bạn) -->
+			<div class="sidebar-section mt-4">
+				<h6 class="text-muted mb-2" style="font-size: 13px; font-weight: bold;">My calendars</h6>
+				<!-- Danh sách lịch (kèm ô đổi tên) sẽ được JS tự động đổ vào đây -->
+				<div id="my-calendars-list"></div>
+			</div>
+		</aside>
 
-			<main class="calendar-main">
-				@RenderBody()
-			</main>
-		</div>
+		<main class="calendar-main">
+			@RenderBody()
+		</main>
+	</div>
 
 		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
