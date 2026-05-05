@@ -128,7 +128,7 @@ $(document).ready(function () {
         syncAllCalendars();
     });
 
-        
+
 
     // Xử lý nút TIẾP THEO (Main Next)
     $('#main-next').off('click').on('click', function (e) {
@@ -340,7 +340,7 @@ function loadAppointments() {
                     $column.append(blockHtml);
                 }
             });
-            applyColorFilter(); 
+            applyColorFilter();
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -361,7 +361,7 @@ function updateMainMonthTitle(date) {
 // ==========================================
 let draggedEventId = null;
 let eventDurationMins = 0;
-let dragOffsetY = 0; 
+let dragOffsetY = 0;
 let $dragShadow = null; // Biến lưu khối bóng (shadow) do chúng ta tự tạo
 
 $(document).on('dragstart', '.appointment-block', function (e) {
@@ -371,7 +371,7 @@ $(document).on('dragstart', '.appointment-block', function (e) {
     }
 
     draggedEventId = $(this).data('id');
-    eventDurationMins = $(this).outerHeight(); 
+    eventDurationMins = $(this).outerHeight();
 
     let rect = this.getBoundingClientRect();
     dragOffsetY = e.originalEvent.clientY - rect.top;
@@ -407,8 +407,8 @@ $(document).on('dragend', '.appointment-block', function () {
 
 // Bắt sự kiện khi rê chuột qua các cột ngày
 $(document).on('dragover', '.day-col', function (e) {
-    e.preventDefault(); 
-    
+    e.preventDefault();
+
     if ($dragShadow && draggedEventId) {
         // Nếu chuột di chuyển sang cột ngày khác -> Dời shadow sang cột đó
         if ($dragShadow.parent()[0] !== this) {
@@ -417,13 +417,13 @@ $(document).on('dragover', '.day-col', function (e) {
 
         let dropY = e.originalEvent.pageY - $(this).offset().top;
         let rawTopPx = dropY - dragOffsetY;
-        
+
         // Ép mốc nhảy 15 phút
         let newTopPx = Math.max(0, Math.round(rawTopPx / 15) * 15);
-        
+
         // Cập nhật vị trí bóng
         $dragShadow.css('top', newTopPx + 'px');
-        
+
         // Tính và cập nhật text thời gian trực tiếp trên bóng
         let timeStr = formatTimeFromPixels(newTopPx, eventDurationMins);
         // Lấy lại địa điểm để không bị mất khi kéo
@@ -468,11 +468,11 @@ $(document).on('drop', '.day-col', function (e) {
             EndTime: endTime
         }),
         success: function (res) {
-            if (res.success) loadAppointments(); 
+            if (res.success) loadAppointments();
         },
         error: function () {
             alert("Lỗi kết nối server khi di chuyển lịch!");
-            loadAppointments(); 
+            loadAppointments();
         }
     });
 
@@ -481,7 +481,7 @@ $(document).on('drop', '.day-col', function (e) {
         $dragShadow.remove();
         $dragShadow = null;
     }
-    draggedEventId = null; 
+    draggedEventId = null;
 });
 
 // Hàm gọi API cập nhật thời gian
@@ -876,7 +876,7 @@ $(document).ready(function () {
             // --- LOGIC ÉP CHIỀU CAO KHI ĐANG KÉO (DRAGGING) ---
             let windowBottom = window.scrollY + window.innerHeight;
             let availableHeight = windowBottom - newTop - 20;
-            let maxBodyHeight = availableHeight - 120; 
+            let maxBodyHeight = availableHeight - 120;
 
             // Ép tịt cỡ cũng phải chừa lại 100px cho body, chặn ko cho rớt form xuống nữa
             if (maxBodyHeight < 100) {
@@ -917,8 +917,8 @@ $(document).ready(function () {
                     if (isExist) {
                         guestEmails.push(email);
                         let badge = `<span class="badge bg-secondary d-flex align-items-center me-1 mb-1" style="font-size: 12px; padding: 5px 8px;">
-                                        ${email} 
-                                        <i class="bi bi-x ms-1 btn-remove-guest" data-email="${email}" style="cursor: pointer; font-size: 14px;"></i>
+                                         ${email} 
+                                         <i class="fas fa-times ms-2 btn-remove-guest" data-email="${email}" style="cursor: pointer; font-size: 14px;"></i>
                                      </span>`;
                         $('#guest-badges-container').append(badge);
                         $('#popover-guests').val('');
@@ -961,7 +961,7 @@ $(document).ready(function () {
     // 6. GỬI DỮ LIỆU XUỐNG DB
     $('#btn-save-event').off('click').on('click', function () {
         let title = $('#popover-title').val();
-        
+
         // --- LOGIC AUTO (No title) ---
         if (!title || title.trim() === "") {
             title = "(No title)";
@@ -1000,8 +1000,8 @@ $(document).ready(function () {
                 $('#event-popover').hide();
                 $('.appointment-ghost').remove();
                 $ghostEvent = null;
-                guestEmails = []; 
-                $('#guest-badges-container').empty(); 
+                guestEmails = [];
+                $('#guest-badges-container').empty();
 
                 if (res.success) {
                     loadAppointments();
@@ -1125,6 +1125,274 @@ $('#btnSubmitJoinCode').on('click', function () {
         },
         error: function () {
             alert("Lỗi kết nối tới server!");
+        }
+    });
+});
+
+// ==========================================
+// MỞ POPOVER KHI BẤM NÚT "CREATE EVENT" Ở SIDEBAR
+// ==========================================
+$(document).on('click', '#btn-create-event', function (e) {
+    e.preventDefault();
+
+    // 1. Lấy ngày giờ hiện tại làm mặc định (thời lượng 30 phút)
+    let now = new Date();
+    // Chỉnh giờ về Local để tránh lệch múi giờ khi gọi toISOString()
+    let localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+    let dateStr = localDate.toISOString().split('T')[0];
+
+    let startHour = now.getHours();
+    let startMin = Math.floor(now.getMinutes() / 15) * 15; // Làm tròn về mốc 15p gần nhất
+    let endHour = startHour;
+    let endMin = startMin + 30;
+
+    if (endMin >= 60) {
+        endHour += 1;
+        endMin -= 60;
+    }
+
+    // 2. Làm sạch dữ liệu form cũ
+    $('#popover-title').val('');
+    $('#popover-location').val('');
+    $('#popover-description').val('');
+    $('#popover-guests').val('');
+    $('#guest-badges-container').empty();
+    guestEmails = []; // Reset mảng khách mời toàn cục
+
+    // 3. Đổ dữ liệu thời gian vào các ô input
+    $('#popover-start-date').val(dateStr);
+    $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
+    $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+
+    // 4. Reset dropdown màu sắc giống logic kéo thả
+    let categories = getCalendarCategories();
+    let dropdownOptions = categories.map(c => {
+        return `<option value="${c.hex}" style="color: ${c.hex}; font-weight: bold;">&#9679; &nbsp; ${c.displayName}</option>`;
+    }).join('');
+
+    let $colorSelect = $('#popover-color-select');
+    $colorSelect.html(dropdownOptions);
+    $colorSelect.val('#039be5').css('color', '#039be5'); // Mặc định màu Blue
+    $colorSelect.off('change').on('change', function () {
+        $(this).css('color', $(this).val());
+    });
+
+    // 5. Căn chỉnh vị trí popover (hiển thị chếch sang phải nút Create của sidebar)
+    let btnOffset = $(this).closest('.dropdown').offset();
+    let popTop = btnOffset.top;
+    let popLeft = btnOffset.left + $(this).closest('.dropdown').outerWidth() + 15; // Cách ra 15px cho đẹp
+
+    // Khôi phục chiều cao tối đa của form đề phòng trường hợp trước đó bị ép ngắn do kéo xuống cuối màn hình
+    $('.popover-body-scroll').css('max-height', '400px');
+
+    // Hiện popover và focus vào ô nhập Title
+    $('#event-popover').css({ top: popTop + 'px', left: popLeft + 'px' }).show();
+    $('#popover-title').focus();
+});
+
+
+// ==========================================
+// XỬ LÝ FORM FULL SCREEN (SỬA & MORE OPTIONS)
+// ==========================================
+let fsGuestEmails = [];
+let currentEditEventId = null; // Lưu ID nếu đang sửa, null nếu tạo mới
+
+// 1. Hàm dùng chung: Render dropdown màu cho Full Screen
+function setupFsColorDropdown(selectedColor) {
+    let categories = getCalendarCategories();
+    let options = categories.map(c =>
+        `<option value="${c.hex}" style="color: ${c.hex}; font-weight: bold;">&#9679; &nbsp; ${c.displayName}</option>`
+    ).join('');
+
+    $('#fs-color-select').html(options);
+    let initColor = selectedColor || '#039be5';
+    $('#fs-color-select').val(initColor).css('color', initColor);
+    $('#fs-color-select').off('change').on('change', function () {
+        $(this).css('color', $(this).val());
+    });
+}
+
+// 2. Hàm dùng chung: Render Guest List cho Full Screen
+function renderFsGuests() {
+    let html = '';
+    fsGuestEmails.forEach(email => {
+        let firstLetter = email.charAt(0).toUpperCase();
+        html += `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex align-items-center">
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">${firstLetter}</div>
+                    <div style="font-size: 14px; color: #3c4043; word-break: break-all;">${email}</div>
+                </div>
+                <!-- Đổi thành fas fa-times của FontAwesome -->
+                <i class="fas fa-times fs-5 text-muted btn-remove-fs-guest" data-email="${email}" style="cursor: pointer;"></i>
+            </div>`;
+    });
+    $('#fs-guest-list-container').html(html);
+}
+
+// Xóa guest trong Full Screen
+$(document).on('click', '.btn-remove-fs-guest', function () {
+    let email = $(this).data('email');
+    fsGuestEmails = fsGuestEmails.filter(e => e !== email);
+    renderFsGuests();
+});
+
+// Thêm guest bằng Enter trong Full Screen (Đã thêm check DB)
+$('#fs-guests-input').on('keypress', function (e) {
+    if (e.which === 13) {
+        e.preventDefault();
+        let email = $(this).val().trim();
+
+        if (email && !fsGuestEmails.includes(email)) {
+            // Gọi API kiểm tra email có tồn tại không
+            $.get('/api/Appointment/search-users?email=' + email, function (data) {
+                // Kiểm tra xem email nhập vào có nằm trong kết quả trả về không
+                let isExist = data.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+                if (isExist) {
+                    // Nếu tồn tại -> Thêm vào mảng và vẽ lại giao diện
+                    fsGuestEmails.push(email);
+                    renderFsGuests();
+                    $('#fs-guests-input').val(''); // Xóa ô nhập sau khi thêm thành công
+                } else {
+                    // Nếu không tồn tại -> Báo lỗi
+                    alert("Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
+                }
+            });
+        } else {
+            $(this).val(''); // Xóa text nếu input rỗng hoặc email đã được thêm từ trước
+        }
+    }
+});
+
+// (Tùy chọn) Gợi ý email khi đang gõ giống form mini
+$('#fs-guests-input').on('input', function () {
+    let keyword = $(this).val();
+    if (keyword.length > 2) {
+        $.get('/api/Appointment/search-users?email=' + keyword, function (data) {
+            let options = '';
+            data.forEach(user => { options += `<option value="${user.email}">${user.username}</option>`; });
+
+            // Nếu bạn muốn dùng gợi ý, nhớ thêm thẻ <datalist id="fs-guest-suggestions"></datalist>
+            // ngay dưới thẻ input #fs-guests-input trong file HTML nhé.
+            if ($('#fs-guest-suggestions').length === 0) {
+                $('#fs-guests-input').after('<datalist id="fs-guest-suggestions"></datalist>');
+                $('#fs-guests-input').attr('list', 'fs-guest-suggestions');
+            }
+            $('#fs-guest-suggestions').html(options);
+        });
+    }
+});
+
+// 3. MỞ FULL SCREEN TỪ "MORE OPTIONS" CỦA FORM TẠO (Mini Popover)
+$(document).on('click', '#btn-more-options', function (e) {
+    e.preventDefault();
+    currentEditEventId = null; // Đang tạo mới
+
+    // Bê dữ liệu từ mini popover sang
+    $('#fs-title').val($('#popover-title').val());
+    $('#fs-start-date').val($('#popover-start-date').val());
+    $('#fs-end-date').val($('#popover-start-date').val()); // Cùng ngày
+    $('#fs-start-time').val($('#popover-start-time').val());
+    $('#fs-end-time').val($('#popover-end-time').val());
+    $('#fs-location').val($('#popover-location').val());
+    $('#fs-description').val($('#popover-description').val());
+    $('#fs-notification').val($('#notification-list select').first().val() || "30 minutes before");
+    $('#fs-visibility').val($('#popover-visibility').val());
+
+    setupFsColorDropdown($('#popover-color-select').val());
+
+    fsGuestEmails = [...guestEmails]; // Copy array guest
+    renderFsGuests();
+
+    $('#event-popover').hide();
+    $('#fullScreenEventModal').modal('show');
+});
+
+// 4. MỞ FULL SCREEN TỪ "CÂY BÚT" CỦA FORM CHI TIẾT SỰ KIỆN ĐÃ CÓ
+$(document).on('click', '#btn-edit-event', function (e) {
+    e.preventDefault();
+    currentEditEventId = $('#btn-delete-event').data('id');
+
+    // Tìm event block trên UI để lấy data
+    let $block = $(`.appointment-block[data-id='${currentEditEventId}']`);
+    let start = new Date($block.data('start'));
+    let end = new Date($block.data('end'));
+
+    let title = $block.data('title');
+    $('#fs-title').val(title === '(No title)' ? '' : title);
+
+    $('#fs-start-date').val(start.toISOString().split('T')[0]);
+    $('#fs-end-date').val(end.toISOString().split('T')[0]);
+    $('#fs-start-time').val(`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`);
+    $('#fs-end-time').val(`${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`);
+
+    $('#fs-location').val($block.data('location'));
+    $('#fs-description').val($block.data('description'));
+    $('#fs-notification').val($block.data('notification') || "30 minutes before");
+
+    setupFsColorDropdown($block.data('color'));
+
+    let guestsRaw = $block.attr('data-guests');
+    fsGuestEmails = JSON.parse(decodeURIComponent(guestsRaw || '%5B%5D'));
+    renderFsGuests();
+
+    // Ẩn Popover detail và mở modal
+    $('#event-detail-popover').hide();
+    $('.calendar-body-scroll').css('overflow', 'auto');
+    $('#fullScreenEventModal').modal('show');
+});
+
+// 5. NÚT LƯU CỦA FULL SCREEN MODAL
+$('#btn-save-fs-event').on('click', function () {
+    let title = $('#fs-title').val() || "(No title)";
+    let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
+    let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
+
+    // Thu thập thêm permissions nếu bạn có lưu trong DB
+    let guestPermissions = {
+        modify: $('#perm-modify').is(':checked'),
+        invite: $('#perm-invite').is(':checked'),
+        seeList: $('#perm-see-list').is(':checked')
+    };
+
+    let appointmentData = {
+        Id: currentEditEventId, // Nếu null thì API sẽ hiểu là Create mới
+        Title: title,
+        StartTime: toLocalISOString(finalStart),
+        EndTime: toLocalISOString(finalEnd),
+        Location: $('#fs-location').val(),
+        Description: $('#fs-description').val(),
+        ColorCategory: $('#fs-color-select').val(),
+        Visibility: parseInt($('#fs-visibility').val() || "0"),
+        Notification: $('#fs-notification').val(),
+        GuestEmails: fsGuestEmails,
+        // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
+    };
+
+    let apiUrl = currentEditEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
+    let httpMethod = 'POST'; // Thay đổi nếu API Update dùng PUT
+
+    $(this).prop('disabled', true).text('Đang lưu...');
+
+    $.ajax({
+        url: apiUrl,
+        type: httpMethod,
+        contentType: 'application/json',
+        data: JSON.stringify(appointmentData),
+        success: function (res) {
+            if (res.success) {
+                $('#fullScreenEventModal').modal('hide');
+                loadAppointments();
+            } else {
+                alert("Lưu thất bại: " + res.message);
+            }
+        },
+        error: function () {
+            alert("Lỗi kết nối server!");
+        },
+        complete: () => {
+            $(this).prop('disabled', false).text('Save');
         }
     });
 });
