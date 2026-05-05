@@ -1063,6 +1063,7 @@ $(document).on('click', '#btn-invite-link', function () {
     let fullUrl = window.location.origin + "/join?code=" + mockCode;
 
     $('#meetingLinkUrl').val(fullUrl);
+    $('#event-detail-popover').css('z-index', '1040');
     $('#inviteModal').modal('show');
 });
 

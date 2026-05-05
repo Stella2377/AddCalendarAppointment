@@ -51,7 +51,8 @@ namespace AddCalendarAppointment.Controllers
             var appointments = await _context.Appointments
                 .Include(a => a.Guests)
                     .ThenInclude(g => g.User)
-                .Where(a => !a.IsDeleted)
+                .Where(a => !a.IsDeleted &&
+                            (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId)))
                 .ToListAsync();
 
             var calendarEvents = appointments.Select(a => new

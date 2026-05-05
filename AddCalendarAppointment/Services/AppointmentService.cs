@@ -30,9 +30,7 @@ namespace AddCalendarAppointment.Services
         public async Task<List<Appointment>> GetAppointmentsAsync(Guid userId)
         {
             return await _context.Appointments
-                //.Where(a => a.OwnerId == userId && !a.IsDeleted)
-                //.ToListAsync();
-                .Where(a => !a.IsDeleted)
+                .Where(a => a.OwnerId == userId && !a.IsDeleted)
                 .ToListAsync();
         }
 
