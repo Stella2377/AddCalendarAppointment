@@ -234,7 +234,7 @@ function loadAppointments() {
                              data-location="${locHtmlStr}"
                              data-description="${descStr}"
                              data-guests="${guestsJson}"
-                             draggable="false" 
+                             draggable="true" 
                              style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; background-color: ${evt.color}; overflow: hidden;">
                             <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                             <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
@@ -264,67 +264,125 @@ function updateMainMonthTitle(date) {
 // ==========================================
 // LOGIC DI CHUYỂN CUỘC HẸN (MOVE DRAG & DROP)
 // ==========================================
-
 let draggedEventId = null;
 let eventDurationMins = 0;
+let dragOffsetY = 0; 
+let $dragShadow = null; // Biến lưu khối bóng (shadow) do chúng ta tự tạo
 
-// 1. Khi bắt đầu kéo một cuộc hẹn cũ
 $(document).on('dragstart', '.appointment-block', function (e) {
+    if ($(e.originalEvent.target).hasClass('resize-handle')) {
+        e.preventDefault();
+        return;
+    }
+
     draggedEventId = $(this).data('id');
+    eventDurationMins = $(this).outerHeight(); 
 
-    // Tính toán thời lượng gốc của cuộc hẹn (để khi thả xuống giữ nguyên độ dài)
-    let height = $(this).height();
-    eventDurationMins = height; // Vì 1px = 1 phút trong logic của bạn
+    let rect = this.getBoundingClientRect();
+    dragOffsetY = e.originalEvent.clientY - rect.top;
 
-    $(this).addClass('opacity-50'); // Làm mờ khi đang kéo
+    // 1. Thủ thuật: Ẩn ảnh ghost mặc định của trình duyệt (cái ảnh tĩnh bị đơ) bằng 1 pixel trong suốt
+    let emptyImg = new Image();
+    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.originalEvent.dataTransfer.setDragImage(emptyImg, 0, 0);
+
+    // 2. Tạo một khối bóng (shadow) giống hệt để tự do điều khiển nhảy 15p
+    $dragShadow = $(this).clone()
+        .removeClass('opacity-50')
+        .css({
+            opacity: 0.9,
+            pointerEvents: 'none', // Rất quan trọng: Bỏ qua click/hover để chuột có thể chạm xuống cột ngày bên dưới
+            zIndex: 999,
+            boxShadow: '0 8px 16px rgba(0,0,0,0.3)' // Thêm đổ bóng cho đẹp
+        })
+        .removeAttr('draggable data-id'); // Xóa thuộc tính thừa để tránh lỗi xung đột
+
+    $(this).addClass('opacity-50'); // Làm mờ khối gốc đang nằm im
     e.originalEvent.dataTransfer.setData("text/plain", draggedEventId);
 });
 
+// Xóa khối shadow nếu drag bị hủy giữa chừng
 $(document).on('dragend', '.appointment-block', function () {
     $(this).removeClass('opacity-50');
+    if ($dragShadow) {
+        $dragShadow.remove();
+        $dragShadow = null;
+    }
 });
 
-// 2. Cho phép thả vào các cột ngày
+// Bắt sự kiện khi rê chuột qua các cột ngày
 $(document).on('dragover', '.day-col', function (e) {
-    e.preventDefault(); // Bắt buộc phải có để cho phép thả
-    $(this).css('background-color', 'rgba(0,0,0,0.05)');
+    e.preventDefault(); 
+    
+    if ($dragShadow && draggedEventId) {
+        // Nếu chuột di chuyển sang cột ngày khác -> Dời shadow sang cột đó
+        if ($dragShadow.parent()[0] !== this) {
+            $(this).append($dragShadow);
+        }
+
+        let dropY = e.originalEvent.pageY - $(this).offset().top;
+        let rawTopPx = dropY - dragOffsetY;
+        
+        // Ép mốc nhảy 15 phút
+        let newTopPx = Math.max(0, Math.round(rawTopPx / 15) * 15);
+        
+        // Cập nhật vị trí bóng
+        $dragShadow.css('top', newTopPx + 'px');
+        
+        // Tính và cập nhật text thời gian trực tiếp trên bóng
+        let timeStr = formatTimeFromPixels(newTopPx, eventDurationMins);
+        $dragShadow.find('.time-loc').html(timeStr);
+    }
 });
 
-$(document).on('dragleave', '.day-col', function (e) {
-    $(this).css('background-color', 'transparent');
-});
-
-// 3. Xử lý khi thả cuộc hẹn xuống vị trí mới
 $(document).on('drop', '.day-col', function (e) {
     e.preventDefault();
-    $(this).css('background-color', 'transparent');
 
     if (!draggedEventId) return;
 
     let $col = $(this);
     let newDateStr = $col.data('date');
 
-    // Tính toán tọa độ Y để ra giờ/phút mới
-    let offset = $col.offset();
-    let relativeY = e.originalEvent.pageY - offset.top;
+    let dropY = e.originalEvent.pageY - $col.offset().top;
+    let rawTopPx = dropY - dragOffsetY;
 
-    // Giới hạn trong khoảng 0 - 1440px (24h)
-    let startTotalMins = Math.max(0, Math.min(1440, relativeY));
-    let endTotalMins = startTotalMins + eventDurationMins;
+    // Tính lại một lần nữa khi chính thức thả xuống
+    let newTopPx = Math.max(0, Math.round(rawTopPx / 15) * 15);
 
-    let startHour = Math.floor(startTotalMins / 60);
-    let startMin = Math.floor(startTotalMins % 60);
-    let endHour = Math.floor(endTotalMins / 60);
-    let endMin = Math.floor(endTotalMins % 60);
+    let startHour = Math.floor(newTopPx / 60);
+    let startMin = Math.floor(newTopPx % 60);
 
-    // Tạo chuỗi thời gian gửi lên Server
+    let endTopPx = newTopPx + eventDurationMins;
+    let endHour = Math.floor(endTopPx / 60);
+    let endMin = Math.floor(endTopPx % 60);
+
     let startTime = `${newDateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`;
     let endTime = `${newDateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
 
-    // Gọi AJAX cập nhật Database
-    updateAppointmentMove(draggedEventId, startTime, endTime);
+    $.ajax({
+        url: '/api/Appointment/update-time',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            Id: draggedEventId,
+            StartTime: startTime,
+            EndTime: endTime
+        }),
+        success: function (res) {
+            if (res.success) loadAppointments(); 
+        },
+        error: function () {
+            alert("Lỗi kết nối server khi di chuyển lịch!");
+            loadAppointments(); 
+        }
+    });
 
-    draggedEventId = null; // Reset
+    // Dọn dẹp bóng
+    if ($dragShadow) {
+        $dragShadow.remove();
+        $dragShadow = null;
+    }
+    draggedEventId = null; 
 });
 
 // Hàm gọi API cập nhật thời gian
@@ -366,7 +424,7 @@ let startResizeY = 0;
 let startHeight = 0;
 
 $(document).ready(function () {
-    // 1. TẠO KHỐI XANH KHI KÉO THẢ
+    // 1. TẠO KHỐI XANH KHI KÉO THẢ (VÀ CLICK)
     $(document).on('mousedown', '.day-col', function (e) {
         if ($(e.target).closest('.appointment-block').length > 0) return;
         if ($(e.target).closest('#event-popover').length > 0) return;
@@ -376,28 +434,52 @@ $(document).ready(function () {
 
         isCreating = true;
         $dragCol = $(this);
-        startY = e.pageY - $dragCol.offset().top;
+
+        let rawStartY = e.pageY - $dragCol.offset().top;
+        // Bắt đầu ép tròn giờ về 15 phút (vd: 12:12 thành 12:00, 12:16 thành 12:15)
+        startY = Math.floor(rawStartY / 15) * 15;
 
         $ghostEvent = $('<div class="appointment-ghost"></div>').css({
-            position: 'absolute', top: startY + 'px', left: '0', width: '95%', height: '0px',
-            backgroundColor: 'rgba(3, 155, 229, 0.4)', border: '1px solid #039be5', zIndex: 5, borderRadius: '4px'
+            position: 'absolute', top: startY + 'px', left: '0', width: '95%', height: '30px',
+            backgroundColor: 'rgba(3, 155, 229, 0.8)', border: '1px solid #039be5', zIndex: 5, borderRadius: '4px',
+            padding: '4px', fontSize: '11px', color: '#fff', fontWeight: 'bold', overflow: 'hidden'
         });
+
+        // Mặc định hiện luôn thời gian 30 phút
+        $ghostEvent.html(formatTimeFromPixels(startY, 30));
         $dragCol.append($ghostEvent);
     });
 
     $(document).on('mousemove', function (e) {
         if (!isCreating || !$ghostEvent) return;
-        let currentY = e.pageY - $dragCol.offset().top;
-        $ghostEvent.css({ top: Math.min(startY, currentY) + 'px', height: Math.abs(currentY - startY) + 'px' });
+
+        let rawCurrentY = e.pageY - $dragCol.offset().top;
+        // Ép nhảy 15 phút khi kéo chuột
+        let currentY = Math.round(rawCurrentY / 15) * 15;
+
+        let newTop = Math.min(startY, currentY);
+        let newHeight = Math.abs(currentY - startY);
+
+        if (newHeight < 15) newHeight = 15; // Tối thiểu kéo được 15p
+
+        $ghostEvent.css({ top: newTop + 'px', height: newHeight + 'px' });
+        // Cập nhật text thời gian đang kéo
+        $ghostEvent.html(formatTimeFromPixels(newTop, newHeight));
     });
 
     $(document).on('mouseup', function (e) {
-        if (!isCreating) return;
+        if (!isCreating || !$ghostEvent) return;
         isCreating = false;
 
         let finalTop = parseFloat($ghostEvent.css('top'));
         let finalHeight = parseFloat($ghostEvent.css('height'));
-        if (finalHeight < 15) finalHeight = 30;
+
+        // NẾU CHỈ CLICK MÀ KHÔNG KÉO CHUỘT (hoặc kéo quá ngắn) -> MẶC ĐỊNH TẠO KHỐI 30 PHÚT
+        if (finalHeight <= 15 && Math.abs(e.pageY - $dragCol.offset().top - startY) < 10) {
+            finalHeight = 30;
+            $ghostEvent.css('height', '30px');
+            $ghostEvent.html(formatTimeFromPixels(finalTop, finalHeight));
+        }
 
         let dateStr = $dragCol.data('date');
         let startHour = Math.floor(finalTop / 60), startMin = Math.floor(finalTop % 60);
@@ -414,26 +496,22 @@ $(document).ready(function () {
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
         $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
 
-        // --- LOGIC TÍNH TỌA ĐỘ VÀ ÉP CHIỀU CAO (SQUISH) LÚC VỪA HIỆN RA ---
+        // --- CĂN CHỈNH TỌA ĐỘ VÀ SQUISH POPOVER (Phần này giữ nguyên của bạn) ---
         let rect = $ghostEvent[0].getBoundingClientRect();
         let popoverLeft = rect.right + 10;
         if (popoverLeft + 440 > window.innerWidth) popoverLeft = rect.left - 450;
 
         let popoverTop = rect.top + window.scrollY;
         let windowBottom = window.scrollY + window.innerHeight;
-        
-        // Tính khoảng trống từ đỉnh popover đến đáy màn hình
-        let availableHeight = windowBottom - popoverTop - 20; // 20px margin an toàn
-        // Chiều cao của Header + Footer form khoảng 120px. Còn lại dành cho Body Scroll.
-        let maxBodyHeight = availableHeight - 120; 
 
-        // Nếu ép quá nhỏ (< 100px) thì không bóp nữa mà giữ nguyên 100px, đẩy form ngược lên trên
+        let availableHeight = windowBottom - popoverTop - 20;
+        let maxBodyHeight = availableHeight - 120;
+
         if (maxBodyHeight < 100) {
             maxBodyHeight = 100;
-            popoverTop = windowBottom - 120 - 100 - 20; 
+            popoverTop = windowBottom - 120 - 100 - 20;
         }
 
-        // Áp dụng CSS
         $('.popover-body-scroll').css('max-height', maxBodyHeight + 'px');
         $('#event-popover').css({ top: popoverTop + 'px', left: popoverLeft + 'px' }).show();
         $('#popover-title').focus();
@@ -466,9 +544,11 @@ $(document).ready(function () {
 
     // A. Kéo dài sự kiện
     $(document).on('mousedown', '.resize-handle', function (e) {
-        e.stopPropagation(); // Ngăn kích hoạt tạo mới
+        e.stopPropagation();
+        e.preventDefault(); // THÊM: Chặn sự kiện mặc định để không kích hoạt drag HTML5
         isResizing = true;
         $resizeBlock = $(this).closest('.appointment-block');
+        $resizeBlock.attr('draggable', 'false');
         startResizeY = e.pageY;
         startHeight = parseFloat($resizeBlock.css('height'));
         $('body').css('cursor', 'ns-resize');
@@ -477,9 +557,18 @@ $(document).ready(function () {
     $(document).on('mousemove', function (e) {
         if (isResizing && $resizeBlock) {
             let diffY = e.pageY - startResizeY;
-            let newHeight = startHeight + diffY;
-            if (newHeight < 15) newHeight = 15; // Tối thiểu 15 phút
+            let rawHeight = startHeight + diffY;
+
+            // Ép mốc nhảy 15 phút (tối thiểu 15p)
+            let newHeight = Math.max(15, Math.round(rawHeight / 15) * 15);
             $resizeBlock.css('height', newHeight + 'px');
+
+            // Tính thời gian thực tế và update text
+            let topPx = parseFloat($resizeBlock.css('top'));
+            let timeStr = formatTimeFromPixels(topPx, newHeight);
+
+            // Tìm thẻ chứa text thời gian và ghi đè nội dung
+            $resizeBlock.find('.time-loc').html(timeStr);
         }
     });
 
@@ -488,6 +577,7 @@ $(document).ready(function () {
             isResizing = false;
             $('body').css('cursor', '');
 
+            $resizeBlock.attr('draggable', 'true');
             let finalHeight = parseFloat($resizeBlock.css('height'));
             let topPx = parseFloat($resizeBlock.css('top'));
             let dateStr = $resizeBlock.closest('.day-col').data('date');
@@ -915,3 +1005,18 @@ $(document).ready(function () {
         });
     }
 });
+
+// HÀM HỖ TRỢ HIỂN THỊ THỜI GIAN THEO PIXEL (1px = 1 phút)
+function formatTimeFromPixels(topPx, heightPx) {
+    let startHour = Math.floor(topPx / 60);
+    let startMin = Math.floor(topPx % 60);
+    let endTopPx = topPx + heightPx;
+    let endHour = Math.floor(endTopPx / 60);
+    let endMin = Math.floor(endTopPx % 60);
+
+    let sDate = new Date(); sDate.setHours(startHour, startMin, 0);
+    let eDate = new Date(); eDate.setHours(endHour, endMin, 0);
+
+    let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+    return sDate.toLocaleTimeString('en-US', timeOptions) + " - " + eDate.toLocaleTimeString('en-US', timeOptions);
+}
