@@ -38,7 +38,8 @@ function renderSidebarCalendars() {
     categories.forEach(cat => {
         html += `
             <div class="form-check d-flex align-items-center mb-2">
-                <input class="form-check-input me-2 shadow-none" type="checkbox" value="${cat.hex}" checked 
+                <!-- THÊM CLASS calendar-color-filter VÀO ĐÂY -->
+                <input class="form-check-input me-2 shadow-none calendar-color-filter" type="checkbox" value="${cat.hex}" checked 
                        style="background-color: ${cat.hex}; border-color: ${cat.hex}; cursor: pointer; border-radius: 3px;">
                 <span class="editable-category" data-color="${cat.hex}" style="font-size: 13px; cursor: text; flex-grow: 1; padding: 2px 4px; border-radius: 4px;">
                     ${cat.displayName}
@@ -337,6 +338,7 @@ function loadAppointments() {
                     $column.append(blockHtml);
                 }
             });
+            applyColorFilter();
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -586,7 +588,9 @@ $(document).ready(function () {
         let categories = getCalendarCategories();
         let dropdownOptions = categories.map(c => {
             // Thêm icon cục màu tròn nhỏ bằng ký tự Unicode để dễ nhận diện
-            return `<option value="${c.hex}">🟢 ${c.displayName}</option>`;
+            return `<option value="${c.hex}" style="color: ${c.hex}; font-weight: bold;">
+                &#9679; &nbsp; ${c.displayName}
+            </option>`;
         }).join('');
 
         let $colorSelect = $('#popover-color-select');
@@ -1127,3 +1131,31 @@ function formatTimeFromPixels(topPx, heightPx) {
     let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
     return sDate.toLocaleTimeString('en-US', timeOptions) + " - " + eDate.toLocaleTimeString('en-US', timeOptions);
 }
+
+// ==========================================
+// HÀM LỌC SỰ KIỆN THEO MÀU SẮC CHECKBOX
+// ==========================================
+function applyColorFilter() {
+    // 1. Lấy danh sách các mã màu (hex) đang được tick chọn
+    let checkedColors = $('.calendar-color-filter:checked').map(function () {
+        return $(this).val().toLowerCase(); // Chuyển về chữ thường để so sánh không bị lỗi
+    }).get();
+
+    // 2. Duyệt qua tất cả các khối sự kiện trên lịch
+    $('.appointment-block').each(function () {
+        let eventColor = $(this).data('color');
+        if (eventColor) eventColor = eventColor.toLowerCase();
+
+        // 3. Nếu màu của sự kiện nằm trong danh sách checked -> Hiện, ngược lại -> Ẩn
+        if (checkedColors.includes(eventColor)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+}
+
+// Lắng nghe thao tác click vào ô Checkbox màu ở Sidebar
+$(document).on('change', '.calendar-color-filter', function () {
+    applyColorFilter();
+});

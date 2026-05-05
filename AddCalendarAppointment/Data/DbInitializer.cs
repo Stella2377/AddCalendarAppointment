@@ -66,7 +66,7 @@ namespace AddCalendarAppointment.Data
                 StartTime = baseDate.AddHours(9),
                 EndTime = baseDate.AddHours(11).AddMinutes(50),
                 Location = "F408",
-                ColorCategory = "#7986cb",
+                ColorCategory = "#0b8043",
                 Visibility = VisibilityType.Private,
                 OwnerId = mainUser.Id,
                 Description = "Hoc Java" // Bổ sung

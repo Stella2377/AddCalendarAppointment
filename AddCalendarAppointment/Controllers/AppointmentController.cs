@@ -237,7 +237,8 @@ namespace AddCalendarAppointment.Controllers
 
                 var finalResults = results.ToList();
 
-                var calendarEvents = finalResults.Select(a => new {
+                var calendarEvents = finalResults.Select(a => new
+                {
                     id = a.Id,
                     title = a.Title,
                     location = a.Location,
@@ -291,16 +292,18 @@ namespace AddCalendarAppointment.Controllers
         }
 
         public class CreateAppointmentRequest
-    {
-        public string Title { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
-        public string? Location { get; set; }
-        public string? Description { get; set; }
-        public string? ColorCategory { get; set; }
-        public VisibilityType Visibility { get; set; }
-        public bool IsRecurring { get; set; }
-        public RecurringType RecurringRule { get; set; }
-        public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        {
+            public string Title { get; set; }
+            public DateTime StartTime { get; set; }
+            public DateTime EndTime { get; set; }
+            public string? Location { get; set; }
+            public string? Description { get; set; }
+            public string? ColorCategory { get; set; }
+            public VisibilityType Visibility { get; set; }
+            public bool IsRecurring { get; set; }
+            public RecurringType RecurringRule { get; set; }
+            public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        }
+
     }
 }
