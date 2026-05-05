@@ -5,6 +5,7 @@ using System.Linq;
 using AddCalendarAppointment.Models;
 using AddCalendarAppointment.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -21,7 +22,18 @@ namespace AddCalendarAppointment.Controllers
 
         private Guid GetCurrentUserId()
         {
-            return Guid.Parse("00000000-0000-0000-0000-000000000001");
+            //var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            //if (Guid.TryParse(userIdStr, out Guid userId))
+            //{
+            //    return userId;
+            //}
+
+            //// Nếu chưa đăng nhập hoặc lỗi, trả về Guid.Empty để tránh crash
+            //return Guid.Empty;
+
+            return Guid.Parse("e357cdd6-59fc-4bfd-8ad0-6c9852b96245");
+
         }
 
         [HttpGet("GetAppointments")]
@@ -36,7 +48,8 @@ namespace AddCalendarAppointment.Controllers
                 title = a.Title,
                 location = a.Location, // Bổ sung trường Location
                 start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss") // Backend đã truyền đủ Start/End
+                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"), // Backend đã truyền đủ Start/End
+                color = a.ColorCategory ?? "#039be5"
             });
 
             return Ok(calendarEvents);

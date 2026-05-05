@@ -56,8 +56,18 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    DbInitializer.Initialize(context);
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        // Gọi hàm Initialize từ class DbInitializer của bạn
+        DbInitializer.Initialize(context);
+    }
+    catch (Exception ex)
+    {
+        // Ghi log lỗi nếu quá trình Seed dữ liệu thất bại
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Có lỗi xảy ra khi tạo dữ liệu mẫu (Seed Data).");
+    }
 }
 
 app.Run();

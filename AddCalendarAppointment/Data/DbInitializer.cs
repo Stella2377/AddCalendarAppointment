@@ -1,6 +1,7 @@
-﻿using System;
+﻿using AddCalendarAppointment.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
-using AddCalendarAppointment.Models;
 
 namespace AddCalendarAppointment.Data
 {
@@ -8,7 +9,7 @@ namespace AddCalendarAppointment.Data
     {
         public static void Initialize(ApplicationDbContext context)
         {
-            context.Database.EnsureCreated();
+            context.Database.Migrate();
 
             // Nếu đã có User thì không seed nữa
             if (context.Users.Any()) return;
