@@ -383,6 +383,7 @@ namespace AddCalendarAppointment.Controllers
                 appt.ColorCategory = req.ColorCategory;
                 appt.Visibility = req.Visibility;
                 appt.Notification = req.Notification;
+                appt.TeamId = req.TeamId;
 
                 // --- XỬ LÝ CẬP NHẬT GUESTS ---
                 if (req.GuestEmails == null) req.GuestEmails = new List<string>();

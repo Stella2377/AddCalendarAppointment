@@ -1024,7 +1024,7 @@ $(document).ready(function () {
             RecurringRule: 0,
             GuestEmails: guestEmails,
             Notification: selectedNotification,
-            TeamId: (parseInt($('#popover-visibility').val()) === 1) ? $('#team-dropdown').val() : null
+            TeamId: (parseInt($('#popover-visibility').val()) === 1) ? ($('#team-dropdown').val() || null) : null
         };
 
         $('#btn-save-event').prop('disabled', true).text('Đang lưu...');
@@ -1443,7 +1443,7 @@ $('#btn-save-fs-event').on('click', function () {
         Visibility: parseInt($('#fs-visibility').val() || "0"),
         Notification: $('#fs-notification').val(),
         GuestEmails: fsGuestEmails,
-        TeamId: (parseInt($('#fs-visibility').val()) === 1) ? $('#fs-team-dropdown').val() : null
+        TeamId: (parseInt($('#fs-visibility').val()) === 1) ? ($('#fs-team-dropdown').val() || null) : null
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
     };
 

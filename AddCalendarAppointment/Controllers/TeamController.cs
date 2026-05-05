@@ -67,7 +67,7 @@ namespace AddCalendarAppointment.Controllers
             // Lấy danh sách các cuộc họp Public của Team này (Chỉ lấy các cuộc họp trong tương lai)
             var now = DateTime.Now;
             var groupMeetings = team.Appointments
-                .Where(a => a.Visibility == VisibilityType.Public && a.StartTime > now && !a.IsDeleted)
+                .Where(a => a.Visibility == VisibilityType.Public && a.EndTime > now && !a.IsDeleted)
                 .OrderBy(a => a.StartTime)
                 .Select(a => new {
                     id = a.Id,
