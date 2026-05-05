@@ -203,6 +203,56 @@ namespace AddCalendarAppointment.Controllers
             }
         }
 
+        [HttpPost("join-by-code")]
+        public async Task<IActionResult> JoinByCode([FromBody] string meetingCode)
+        {
+            var userId = GetCurrentUserId();
+
+            // 1. Tìm cuộc họp dựa trên Code
+            var targetMeeting = await _context.Appointments
+                .Include(a => a.Guests)
+                .FirstOrDefaultAsync(a => a.MeetingCode == meetingCode && !a.IsDeleted);
+
+            if (targetMeeting == null)
+                return NotFound(new { success = false, message = "Mã cuộc họp không tồn tại!" });
+
+            // 2. Thuật toán kiểm tra trùng lịch (Overlap Check)
+            var overlapAppt = await _context.Appointments
+                .Include(a => a.Guests)
+                .Where(a => !a.IsDeleted
+                         && a.StartTime < targetMeeting.EndTime
+                         && a.EndTime > targetMeeting.StartTime) // Công thức kinh điển check giao nhau
+                .Where(a => a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId)) // Của mình hoặc mình là khách
+                .FirstOrDefaultAsync();
+
+            if (overlapAppt != null)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    isOverlap = true,
+                    message = $"Cảnh báo chồng lấn lịch! Trùng với sự kiện: '{overlapAppt.Title}' (Từ {overlapAppt.StartTime:HH:mm} - {overlapAppt.EndTime:HH:mm}). Bạn cần giải quyết lịch trùng trước khi tham gia."
+                });
+            }
+
+            // 3. Xử lý thêm vào danh sách Guests nếu chưa có
+            if (!targetMeeting.Guests.Any(g => g.UserId == userId))
+            {
+                // Xét cờ RequireApproval để set Status
+                var guestStatus = targetMeeting.RequireApproval ? GuestStatus.Pending : GuestStatus.Accepted;
+
+                targetMeeting.Guests.Add(new AppointmentGuest
+                {
+                    UserId = userId,
+                    Status = guestStatus
+                });
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true, requireApproval = targetMeeting.RequireApproval });
+        }
+
+
         // DTO nhận dữ liệu từ JS
         public class UpdateTimeRequest
         {
@@ -211,18 +261,19 @@ namespace AddCalendarAppointment.Controllers
             public string EndTime { get; set; }
         }
 
-       
+
         public class CreateAppointmentRequest
-    {
-        public string Title { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
-        public string? Location { get; set; }
-        public string? Description { get; set; }
-        public string? ColorCategory { get; set; }
-        public VisibilityType Visibility { get; set; }
-        public bool IsRecurring { get; set; }
-        public RecurringType RecurringRule { get; set; }
-        public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        {
+            public string Title { get; set; }
+            public DateTime StartTime { get; set; }
+            public DateTime EndTime { get; set; }
+            public string? Location { get; set; }
+            public string? Description { get; set; }
+            public string? ColorCategory { get; set; }
+            public VisibilityType Visibility { get; set; }
+            public bool IsRecurring { get; set; }
+            public RecurringType RecurringRule { get; set; }
+            public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
+        }
     }
 }

@@ -1048,3 +1048,62 @@ function applyColorFilter() {
 $(document).on('change', '.calendar-color-filter', function () {
     applyColorFilter();
 });
+
+
+
+// ==========================================
+// TÍNH NĂNG SHARE LINK & JOIN BẰNG CODE
+// ==========================================
+
+// 1. Mở modal Invite và Copy Link
+$(document).on('click', '#btn-invite-link', function () {
+    let currentEventId = $('#btn-delete-event').data('id'); // Lấy ID đang mở trong detail
+    // Giả sử mã code được gen bằng ID hoặc một API nào đó. Ở đây mình làm mẫu link có code
+    let mockCode = currentEventId.substring(0, 8); // Lấy 8 ký tự đầu của Guid làm code
+    let fullUrl = window.location.origin + "/join?code=" + mockCode;
+
+    $('#meetingLinkUrl').val(fullUrl);
+    $('#inviteModal').modal('show');
+});
+
+$('#btnCopyLink').on('click', function () {
+    let linkInput = document.getElementById("meetingLinkUrl");
+    linkInput.select();
+    navigator.clipboard.writeText(linkInput.value).then(function () {
+        // Tùy biến nút copy để có UX tốt hơn
+        let originalText = $('#btnCopyLink').text();
+        $('#btnCopyLink').text('Copied!').removeClass('btn-primary').addClass('btn-success');
+        setTimeout(() => { $('#btnCopyLink').text(originalText).removeClass('btn-success').addClass('btn-primary'); }, 2000);
+    });
+});
+
+// 2. Xử lý submit mã Code để Join
+$('#btnSubmitJoinCode').on('click', function () {
+    let code = $('#inputMeetingCode').val().trim();
+    if (!code) return;
+
+    $('#overlapWarning').addClass('d-none'); // Ẩn cảnh báo cũ
+
+    $.ajax({
+        url: '/api/Appointment/join-by-code',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(code),
+        success: function (res) {
+            if (res.isOverlap) {
+                // Hiện cảnh báo trùng lịch đỏ chót
+                $('#overlapWarning').removeClass('d-none').text(res.message);
+            } else if (res.success) {
+                $('#joinMeetingModal').modal('hide');
+                let msg = res.requireApproval ? "Đã gửi yêu cầu tham gia. Chờ người tạo phê duyệt!" : "Đã tham gia thành công!";
+                alert(msg);
+                loadAppointments(); // Load lại lịch chính để hiện cục event mới
+            } else {
+                alert(res.message);
+            }
+        },
+        error: function () {
+            alert("Lỗi kết nối tới server!");
+        }
+    });
+});

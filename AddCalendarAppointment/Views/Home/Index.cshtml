@@ -173,7 +173,7 @@
         <!-- Invite via link -->
         <div class="d-flex align-items-start mb-3">
             <div class="me-3 detail-icon" style="width: 24px;"></div>
-            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="color: #1a73e8; border-color: #dadce0; font-weight: 500;">
+            <button id="btn-invite-link" class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="color: #1a73e8; border-color: #dadce0; font-weight: 500;">
                 <i class="fas fa-link me-1"></i> Invite via link
             </button>
         </div>
@@ -220,6 +220,48 @@
         <div class="d-flex align-items-center mb-1">
             <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-calendar-alt fs-5"></i></div>
             <div id="detail-calendar-name" style="font-size: 14px; color: #3c4043;">Trương Thị Ngọc Huyền</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Invite Via Link -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Share Meeting Link</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="meetingLinkUrl" class="form-control" readonly />
+                    <button id="btnCopyLink" class="btn btn-primary">Copy</button>
+                </div>
+                <div class="permission-options mt-3">
+                    <p class="mb-1 fw-bold">Quyền tham gia:</p>
+                    <label class="d-block"><input type="radio" name="joinPermission" value="false" checked /> Bất kỳ ai có mã đều được tham gia</label>
+                    <label class="d-block"><input type="radio" name="joinPermission" value="true" /> Phải được tôi phê duyệt</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Enter Code để Join -->
+<div class="modal fade" id="joinMeetingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Join a Meeting</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="inputMeetingCode" class="form-control" placeholder="Nhập mã cuộc họp (VD: abc-defg-hij)" />
+                <div id="overlapWarning" class="alert alert-warning mt-2 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btnSubmitJoinCode" class="btn btn-primary">Join</button>
+            </div>
         </div>
     </div>
 </div>

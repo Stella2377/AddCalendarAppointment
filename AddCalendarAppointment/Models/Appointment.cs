@@ -28,5 +28,8 @@ namespace AddCalendarAppointment.Models
         public Team? Team { get; set; }
 
         public ICollection<AppointmentGuest>? Guests { get; set; }
+        public string? MeetingCode { get; set; }
+        public bool RequireApproval { get; set; }
+        public string? Notification { get; set; }
     }
 }
