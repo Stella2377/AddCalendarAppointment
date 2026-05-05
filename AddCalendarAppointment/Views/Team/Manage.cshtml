@@ -137,7 +137,7 @@
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-calendar-check me-2"></i>Group Meetings (Public):</h6>
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-calendar-check me-2"></i>Group Meetings:</h6>
                         <div id="groupMeetingList">
                             <!-- Danh sách Group Meeting -->
                         </div>
@@ -370,7 +370,7 @@
             document.getElementById('m-detail-color').style.backgroundColor = meeting.color;
             document.getElementById('m-detail-notification').innerText = meeting.notification || "30 minutes before";
             document.getElementById('m-detail-organizer').innerText = meeting.creatorName;
-            document.getElementById('m-detail-visibility').innerText = "Public for: " + (document.getElementById('detailTeamName').innerText);
+            document.getElementById('m-detail-visibility').innerText = "Group Meeting for: " + (document.getElementById('detailTeamName').innerText);
 
             const locRow = document.getElementById('m-detail-loc-row');
             if (meeting.location) {

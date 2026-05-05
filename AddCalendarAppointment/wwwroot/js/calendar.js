@@ -833,7 +833,7 @@ $(document).ready(function () {
         // --- XỬ LÝ VISIBILITY ---
         if (visibility === "1" && teamName && teamName.trim() !== "") {
             $('#detail-visibility-row').removeClass('d-none').addClass('d-flex');
-            $('#detail-visibility-text').text(`Public for: ${teamName}`);
+            $('#detail-visibility-text').text(`Group Meeting for: ${teamName}`);
         } else {
             $('#detail-visibility-row').removeClass('d-flex').addClass('d-none');
         }
@@ -1061,7 +1061,7 @@ $(document).ready(function () {
         const $row = $('#team-selection-row');
         const $dropdown = $('#team-dropdown');
 
-        if (visibility === "1") { // Nếu chọn Public
+        if (visibility === "1") { // Nếu chọn Group Meeting
             // Gọi API lấy danh sách Team của user
             $.get('/api/Appointment/get-user-teams', function (teams) {
                 if (teams && teams.length > 0) {

@@ -64,7 +64,7 @@ namespace AddCalendarAppointment.Controllers
                 role = (m.Id == team.OwnerId) ? "Trưởng nhóm" : "Thành viên"
             }).OrderBy(m => m.role == "Trưởng nhóm" ? 0 : 1).ToList();
 
-            // Lấy danh sách các cuộc họp Public của Team này (Chỉ lấy các cuộc họp trong tương lai)
+            // Lấy danh sách các cuộc họp Group Meeting của Team này (Chỉ lấy các cuộc họp trong tương lai)
             var now = DateTime.Now;
             var groupMeetings = team.Appointments
                 .Where(a => a.Visibility == VisibilityType.Public && a.EndTime > now && !a.IsDeleted)
