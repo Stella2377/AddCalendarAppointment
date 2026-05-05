@@ -490,3 +490,33 @@ body {
 .time-input-group input[type="time"] {
     max-width: 130px;
 }
+
+/* ==========================================
+   CSS CHO RESIZE VÀ DETAIL POPOVER
+   ========================================== */
+.appointment-block .resize-handle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+    background-color: rgba(255, 255, 255, 0.4);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.appointment-block:hover .resize-handle {
+    opacity: 1;
+}
+
+#event-detail-popover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+    border-radius: 12px !important;
+}
+
+.detail-icon {
+    width: 24px;
+    text-align: center;
+    color: #5f6368;
+}

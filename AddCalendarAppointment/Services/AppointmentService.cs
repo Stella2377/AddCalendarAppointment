@@ -188,6 +188,16 @@ namespace AddCalendarAppointment.Services
             return true;
         }
 
+        public async Task<bool> DeleteAppointmentAsync(Guid id, Guid userId)
+        {
+            var appt = await _context.Appointments.FirstOrDefaultAsync(a => a.Id == id && a.OwnerId == userId);
+            if (appt == null) return false;
+
+            appt.IsDeleted = true; // Xóa mềm
+            appt.DeletedDate = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return true;
+        }
         public async Task<List<Appointment>> GetTrashAsync(Guid userId)
         {
             return await _context.Appointments
