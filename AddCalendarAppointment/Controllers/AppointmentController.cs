@@ -149,6 +149,45 @@ namespace AddCalendarAppointment.Controllers
             await _appointmentService.EmptyTrashAsync(userId);
             return Ok(new { success = true });
         }
+
+        [HttpPost("update-time")]
+        public async Task<IActionResult> UpdateTime([FromBody] UpdateTimeRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId(); // Lấy ID người dùng từ Session
+
+                // Gọi Service để tìm cuộc hẹn
+                // Giả sử Service của bạn có hàm GetById hoặc bạn có thể gọi trực tiếp DB qua Context
+                var appointments = await _appointmentService.GetAppointmentsAsync(userId);
+                var appt = appointments.FirstOrDefault(a => a.Id == request.Id);
+
+                if (appt == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
+
+                // Cập nhật thời gian mới
+                appt.StartTime = DateTime.Parse(request.StartTime);
+                appt.EndTime = DateTime.Parse(request.EndTime);
+
+                // Lưu thay đổi (Giả sử Service của bạn có hàm Update)
+                // Nếu Service chưa có, bạn cần bổ sung hàm Update vào AppointmentService
+                await _appointmentService.UpdateAppointmentAsync(appt);
+
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // DTO nhận dữ liệu từ JS
+        public class UpdateTimeRequest
+        {
+            public Guid Id { get; set; }
+            public string StartTime { get; set; }
+            public string EndTime { get; set; }
+        }
     }
 
     public class CreateAppointmentRequest

@@ -35,6 +35,14 @@ namespace AddCalendarAppointment.Services
                 .ToListAsync();
         }
 
+        public async Task UpdateAppointmentAsync(Appointment appointment)
+        {
+            // Giả sử biến ngữ cảnh database của bạn tên là _context
+            // Nếu trong Service bạn đặt tên khác (ví dụ _db), hãy đổi tên cho khớp
+            _context.Appointments.Update(appointment);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<TimeSpan> GetUserDefaultDurationAsync(Guid userId)
         {
             var settings = await _context.UserSettings.FirstOrDefaultAsync(u => u.UserId == userId);
