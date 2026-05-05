@@ -324,12 +324,19 @@
                                 <option value="Free">Free</option>
                             </select>
                             
-                            <div class="text-muted me-3 ms-3" style="width: 24px; text-align: center;"><i class="fas fa-lock fs-5"></i></div>
                             <select id="fs-visibility" class="form-select bg-light border-0 w-auto text-muted">
-                                <option value="0">Default visibility</option>
+                                <option value="0">Private</option>
                                 <option value="1">Public</option>
-                                <option value="2">Private</option>
                             </select>
+                        </div>
+
+                        <!-- Section chọn Team cho Full Screen (mặc định ẩn) -->
+                        <div id="fs-team-selection-row" class="d-none align-items-center mb-4">
+                            <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-users fs-5"></i></div>
+                            <select id="fs-team-dropdown" class="form-select bg-light border-0 w-auto">
+                                <option value="">-- Select Team --</option>
+                            </select>
+                        </div>
                         </div>
 
                         <!-- Description -->
