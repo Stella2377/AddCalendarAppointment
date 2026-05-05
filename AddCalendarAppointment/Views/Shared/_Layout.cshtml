@@ -27,6 +27,16 @@
 			/* Ngày tháng khác: Chỉ làm mờ chữ, tuyệt đối không màu nền */
 			.mini-calendar .text-muted { color: #dadce0 !important; cursor: default; background: none !important; }
 			.mini-calendar .text-muted:hover { background: none !important; }
+
+			/* Ẩn dấu mũi tên mặc định của dropdown trên avatar */
+			.no-caret::after {
+				display: none !important;
+			}
+
+			.dropdown-item:active {
+				background-color: #f8f9fa;
+				color: #dc3545;
+			}
 		</style>
 	</head>
 	<body>
@@ -81,6 +91,15 @@
 					<li class="px-3 py-2 small text-muted border-bottom text-truncate" style="max-width: 200px;">
 						@userEmail
 					</li>
+					<!-- THÊM NÚT ĐỔI MẬT KHẨU Ở ĐÂY -->
+					<li>
+						<a class="dropdown-item mt-1" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+							<i class="fa-solid fa-key me-2 small text-secondary"></i> Đổi mật khẩu
+						</a>
+					</li>
+
+					<!-- ĐƯỜNG KẺ NGANG ĐỂ TÁCH BIỆT NÚT ĐĂNG XUẤT -->
+					<li><hr class="dropdown-divider"></li>
 					<li>
 						<a class="dropdown-item text-danger mt-1" asp-controller="Account" asp-action="Logout">
 							<i class="fa-solid fa-right-from-bracket me-2 small"></i> Đăng xuất
@@ -175,5 +194,102 @@
 
     <!-- Thêm dòng này để nhúng file calendar.js -->
     <script src="~/js/calendar.js" asp-append-version="true"></script>
+	@await RenderSectionAsync("Scripts", required: false)
+
+	<!-- ================= MODAL ĐỔI MẬT KHẨU ================= -->
+	<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="changePasswordLabel">Đổi Mật Khẩu</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<form id="changePasswordForm">
+						<div class="mb-3">
+							<label class="form-label text-muted small fw-bold">Mật khẩu hiện tại</label>
+							<input type="password" class="form-control" id="oldPassword" required>
+						</div>
+						<div class="mb-3">
+							<label class="form-label text-muted small fw-bold">Mật khẩu mới</label>
+							<input type="password" class="form-control" id="newPassword" required>
+						</div>
+						<div class="mb-3">
+							<label class="form-label text-muted small fw-bold">Xác nhận mật khẩu mới</label>
+							<input type="password" class="form-control" id="confirmPassword" required>
+						</div>
+
+						<!-- Chỗ để hiển thị thông báo lỗi hoặc thành công -->
+						<div id="changePasswordAlert" class="alert d-none" role="alert"></div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+					<button type="button" class="btn btn-primary" id="btnSubmitChangePassword">Cập nhật mật khẩu</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ================= JAVASCRIPT XỬ LÝ ĐỔI MẬT KHẨU ================= -->
+	<script>
+		document.getElementById('btnSubmitChangePassword').addEventListener('click', function () {
+		// Lấy dữ liệu từ các ô input
+		var oldP = document.getElementById('oldPassword').value;
+		var newP = document.getElementById('newPassword').value;
+		var confP = document.getElementById('confirmPassword').value;
+		var alertBox = document.getElementById('changePasswordAlert');
+
+		// Bỏ ẩn thông báo
+		alertBox.classList.remove('d-none');
+
+		// Validate cơ bản
+		if (!oldP || !newP || !confP) {
+		alertBox.className = 'alert alert-danger mt-2';
+		alertBox.innerText = 'Vui lòng điền đầy đủ thông tin!';
+		return;
+		}
+
+		// Đóng gói dữ liệu gửi lên server
+		var formData = new FormData();
+		formData.append('oldPassword', oldP);
+		formData.append('newPassword', newP);
+		formData.append('confirmPassword', confP);
+
+		// Gọi API lên hàm ChangePassword trong AccountController
+		fetch('/Account/ChangePassword', {
+		method: 'POST',
+		body: formData
+		})
+		.then(response => response.json())
+		.then(data => {
+		if (data.success) {
+		// Hiển thị màu xanh lá báo thành công
+		alertBox.className = 'alert alert-success mt-2';
+		alertBox.innerText = data.message;
+
+		// Xóa trống form
+		document.getElementById('changePasswordForm').reset();
+
+		// Tự động tắt bảng Modal sau 1.5 giây
+		setTimeout(() => {
+		var myModalEl = document.getElementById('changePasswordModal');
+		var modal = bootstrap.Modal.getInstance(myModalEl);
+		modal.hide();
+		alertBox.classList.add('d-none'); // ẩn lại thông báo
+		}, 1500);
+		} else {
+		// Hiển thị màu đỏ báo lỗi
+		alertBox.className = 'alert alert-danger mt-2';
+		alertBox.innerText = data.message;
+		}
+		})
+		.catch(error => {
+		console.error('Error:', error);
+		alertBox.className = 'alert alert-danger mt-2';
+		alertBox.innerText = 'Có lỗi xảy ra, vui lòng thử lại sau!';
+		});
+		});
+	</script>
 </body>
 </html>

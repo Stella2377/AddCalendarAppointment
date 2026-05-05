@@ -74,6 +74,39 @@ namespace AddCalendarAppointment.Controllers
             return Json(new { success = false, message = "Sai Email hoặc mật khẩu!" });
         }
 
+        [HttpPost]
+        public IActionResult ChangePassword(string oldPassword, string newPassword, string confirmPassword)
+        {
+            // 1. Kiểm tra đăng nhập
+            var userIdStr = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userIdStr))
+            {
+                return Json(new { success = false, message = "Vui lòng đăng nhập lại để thực hiện!" });
+            }
+
+            // 2. Kiểm tra mật khẩu mới và xác nhận
+            if (newPassword != confirmPassword)
+            {
+                return Json(new { success = false, message = "Mật khẩu xác nhận không khớp!" });
+            }
+
+            // 3. Tìm user trong database
+            Guid userId = Guid.Parse(userIdStr);
+            var user = _context.Users.FirstOrDefault(u => u.Id == userId);
+
+            // 4. Kiểm tra mật khẩu cũ
+            if (user == null || user.Password != oldPassword)
+            {
+                return Json(new { success = false, message = "Mật khẩu cũ không chính xác!" });
+            }
+
+            // 5. Cập nhật mật khẩu mới và lưu database
+            user.Password = newPassword;
+            _context.SaveChanges();
+
+            return Json(new { success = true, message = "Đổi mật khẩu thành công!" });
+        }
+
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();

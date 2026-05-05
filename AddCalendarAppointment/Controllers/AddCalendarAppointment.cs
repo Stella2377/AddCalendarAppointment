@@ -10,11 +10,11 @@ namespace AddCalendarAppointment.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class TeamController : ControllerBase
+    public class TeamApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public TeamController(ApplicationDbContext context)
+        public TeamApiController(ApplicationDbContext context)
         {
             _context = context;
         }
