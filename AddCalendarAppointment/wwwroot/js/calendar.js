@@ -821,14 +821,6 @@ $(document).ready(function () {
         }
     });
 
-    // 3. Xử lý nút Đặt lại (Reset)
-    $(document).on('click', '#btn-reset-search', function (e) {
-        e.preventDefault();
-        $('#advanced-search-panel input').val('');
-        $('#main-search-input').val('');
-        loadAppointments(); // Tải lại toàn bộ lịch ban đầu
-    });
-
     // 4. Bắt sự kiện Enter ở ô tìm kiếm chính
     $(document).on('keypress', '#main-search-input', function (e) {
         if (e.which === 13) { // Phím Enter
@@ -840,18 +832,13 @@ $(document).ready(function () {
     $(document).on('input', '#main-search-input', function () {
         if ($(this).val().trim() === '') {
             $('#filter-keyword').val('');
+            $('#search-results-container').hide();
+            $('.calendar-header-grid, .calendar-body-scroll').show();
             loadAppointments();
         } else {
             // Đồng bộ dữ liệu xuống ô keyword của bộ lọc nâng cao
             $('#filter-keyword').val($(this).val());
         }
-    });
-
-    // 6. Nút Tìm kiếm (Search) trong panel nâng cao
-    $(document).on('click', '#btn-execute-search', function (e) {
-        e.preventDefault();
-        executeSearch();
-        $('#advanced-search-panel').hide();
     });
 
     // Hàm gọi AJAX tìm kiếm
