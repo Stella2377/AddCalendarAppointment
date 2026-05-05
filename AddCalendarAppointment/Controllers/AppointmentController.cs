@@ -1,13 +1,14 @@
-﻿using AddCalendarAppointment.Models;
+﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Models;
 using AddCalendarAppointment.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using AddCalendarAppointment.Data;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -42,16 +43,25 @@ namespace AddCalendarAppointment.Controllers
         public async Task<IActionResult> GetAppointments()
         {
             var userId = GetCurrentUserId();
-            var appointments = await _appointmentService.GetAppointmentsAsync(userId);
+
+            // Ép EF Core load thêm bảng Guests và User để lấy Email
+            var appointments = await _context.Appointments
+                .Include(a => a.Guests)
+                    .ThenInclude(g => g.User)
+                .Where(a => !a.IsDeleted)
+                .ToListAsync();
 
             var calendarEvents = appointments.Select(a => new
             {
                 id = a.Id,
                 title = a.Title,
-                location = a.Location, // Bổ sung trường Location
-                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),    
-                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"), // Backend đã truyền đủ Start/End
-                color = a.ColorCategory ?? "#039be5"
+                location = a.Location,
+                description = a.Description, // Thêm Description
+                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                color = a.ColorCategory ?? "#039be5",
+                // Trả về danh sách Email của khách mời
+                guests = a.Guests != null ? a.Guests.Select(g => g.User.Email).ToList() : new List<string>()
             });
 
             return Ok(calendarEvents);
@@ -147,6 +157,15 @@ namespace AddCalendarAppointment.Controllers
         {
             var userId = GetCurrentUserId();
             await _appointmentService.EmptyTrashAsync(userId);
+            return Ok(new { success = true });
+        }
+
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var userId = GetCurrentUserId();
+            var success = await _appointmentService.DeleteAppointmentAsync(id, userId);
+            if (!success) return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền xóa." });
             return Ok(new { success = true });
         }
 

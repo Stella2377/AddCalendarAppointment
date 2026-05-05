@@ -219,16 +219,28 @@ function loadAppointments() {
 
                     let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
 
+                    // Mã hóa mảng guests để nhét vào HTML an toàn
+                    let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
+                    let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
+                    let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+
                     let blockHtml = `
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
-                             draggable="true" 
-                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; cursor: grab; background-color: ${evt.color}; overflow: hidden;">
-                            <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title}</div>
+                             data-title="${evt.title || '(No title)'}"
+                             data-start="${evt.start}"
+                             data-end="${evt.end}"
+                             data-color="${evt.color}"
+                             data-location="${locHtmlStr}"
+                             data-description="${descStr}"
+                             data-guests="${guestsJson}"
+                             draggable="false" 
+                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; background-color: ${evt.color}; overflow: hidden;">
+                            <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                             <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
                                 ${timeString}
-                                ${locString}
                             </div>
+                            <div class="resize-handle"></div>
                         </div>
                     `;
                     $column.append(blockHtml);
@@ -348,6 +360,11 @@ let startY = 0;
 let $dragCol = null;
 let $ghostEvent = null;
 
+let isResizing = false;
+let $resizeBlock = null;
+let startResizeY = 0;
+let startHeight = 0;
+
 $(document).ready(function () {
     // 1. TẠO KHỐI XANH KHI KÉO THẢ
     $(document).on('mousedown', '.day-col', function (e) {
@@ -429,12 +446,194 @@ $(document).ready(function () {
             $('.appointment-ghost').remove();
             $ghostEvent = null;
         }
+        if (!$(e.target).closest('#event-detail-popover').length && !$(e.target).closest('.appointment-block').length) {
+            if ($('#event-detail-popover').is(':visible')) {
+                $('#event-detail-popover').hide();
+                $('.calendar-body-scroll').css('overflow', 'auto');
+            }
+        }
     });
 
     $('#btn-close-popover').on('click', function () {
         $('#event-popover').hide();
         $('.appointment-ghost').remove();
         $ghostEvent = null;
+    });
+
+    // ==========================================
+    // RESIZE (KÉO DÀI) VÀ XEM CHI TIẾT SỰ KIỆN
+    // ==========================================
+
+    // A. Kéo dài sự kiện
+    $(document).on('mousedown', '.resize-handle', function (e) {
+        e.stopPropagation(); // Ngăn kích hoạt tạo mới
+        isResizing = true;
+        $resizeBlock = $(this).closest('.appointment-block');
+        startResizeY = e.pageY;
+        startHeight = parseFloat($resizeBlock.css('height'));
+        $('body').css('cursor', 'ns-resize');
+    });
+
+    $(document).on('mousemove', function (e) {
+        if (isResizing && $resizeBlock) {
+            let diffY = e.pageY - startResizeY;
+            let newHeight = startHeight + diffY;
+            if (newHeight < 15) newHeight = 15; // Tối thiểu 15 phút
+            $resizeBlock.css('height', newHeight + 'px');
+        }
+    });
+
+    $(document).on('mouseup', function (e) {
+        if (isResizing && $resizeBlock) {
+            isResizing = false;
+            $('body').css('cursor', '');
+
+            let finalHeight = parseFloat($resizeBlock.css('height'));
+            let topPx = parseFloat($resizeBlock.css('top'));
+            let dateStr = $resizeBlock.closest('.day-col').data('date');
+
+            // Tính toán lại giờ
+            let startHour = Math.floor(topPx / 60), startMin = Math.floor(topPx % 60);
+            let endTop = topPx + finalHeight;
+            let endHour = Math.floor(endTop / 60), endMin = Math.floor(endTop % 60);
+
+            let finalStart = new Date(`${dateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`);
+            let finalEnd = new Date(`${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`);
+
+            // Gọi API Update thời gian
+            $.ajax({
+                url: '/api/Appointment/update-time', type: 'POST', contentType: 'application/json',
+                data: JSON.stringify({ Id: $resizeBlock.data('id'), StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
+                success: function () { loadAppointments(); }
+            });
+            $resizeBlock = null;
+        }
+    });
+
+    // B. Click để xem chi tiết
+    $(document).on('click', '.appointment-block', function (e) {
+        if ($(e.target).hasClass('resize-handle')) return;
+
+        $('#event-popover').hide();
+
+        let block = $(this);
+        let title = block.attr('data-title') || "(No title)";
+        let startStr = block.attr('data-start');
+        let endStr = block.attr('data-end');
+        let color = block.attr('data-color') || '#039be5';
+        let id = block.attr('data-id');
+        let location = block.attr('data-location');
+        let description = block.attr('data-description');
+
+        // Giải mã JSON danh sách khách mời
+        let guestsRaw = block.attr('data-guests');
+        let guests = JSON.parse(decodeURIComponent(guestsRaw || '%5B%5D'));
+
+        if (!startStr || !endStr) return;
+
+        let start = new Date(startStr);
+        let end = new Date(endStr);
+        let dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+        let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+        let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)} - ${end.toLocaleTimeString('en-US', timeOptions)}`;
+
+        $('#detail-title').text(title);
+        $('#detail-time').text(timeStr);
+        $('#detail-color-dot').css('background-color', color);
+        $('#btn-delete-event').data('id', id);
+
+        // --- XỬ LÝ ẨN/HIỆN CÁC TRƯỜNG DỮ LIỆU ---
+
+        // 1. Location
+        if (location && location.trim() !== "") {
+            $('#detail-location-row').removeClass('d-none').addClass('d-flex');
+            $('#detail-location').text(location);
+        } else {
+            $('#detail-location-row').removeClass('d-flex').addClass('d-none');
+        }
+
+        // 2. Description
+        if (description && description.trim() !== "") {
+            $('#detail-description-row').removeClass('d-none').addClass('d-flex');
+            $('#detail-description').text(description);
+        } else {
+            $('#detail-description-row').removeClass('d-flex').addClass('d-none');
+        }
+
+        // 3. Guests
+        if (guests && guests.length > 0) {
+            $('#detail-guests-row').removeClass('d-none').addClass('d-flex');
+            $('#detail-guest-count').text(`${guests.length} guest${guests.length > 1 ? 's' : ''}`);
+
+            let guestHtml = '';
+            guests.forEach(email => {
+                // Tạo một cái Avatar ảo từ chữ cái đầu của email
+                let firstLetter = email.charAt(0).toUpperCase();
+                guestHtml += `<div class="d-flex align-items-center mb-2"><div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">${firstLetter}</div><div style="font-size: 14px; color: #3c4043; word-break: break-all;">${email}</div></div>`;
+            });
+            $('#detail-guest-list').html(guestHtml);
+        } else {
+            $('#detail-guests-row').removeClass('d-flex').addClass('d-none');
+        }
+
+        // Ánh xạ Tên lịch
+        let calendarName = "Sự kiện cá nhân";
+        if (color === "#039be5") calendarName = "Học thuật";
+        else if (color === "#33b679") calendarName = "Sinh hoạt CLB";
+        $('#detail-calendar-name').text(calendarName);
+
+        // --- LOGIC TÍNH TỌA ĐỘ VÀ CHỐNG TRÀN MÀN HÌNH ---
+        let $detailPopover = $('#event-detail-popover');
+        $detailPopover.show(); // Hiện ra trước để lấy kích thước thật
+
+        let rect = this.getBoundingClientRect();
+        let popWidth = $detailPopover.outerWidth();
+        let popHeight = $detailPopover.outerHeight();
+
+        // 1. Căn trục X (Trái / Phải)
+        let popLeft = rect.right + 10;
+        if (popLeft + popWidth > window.innerWidth) popLeft = rect.left - popWidth - 10;
+
+        // 2. Căn trục Y (Chống tràn đáy màn hình)
+        let popTop = rect.top + window.scrollY;
+        let windowBottom = window.scrollY + window.innerHeight;
+
+        // Nếu mép dưới của popover lọt thỏm qua đáy màn hình -> Đẩy ngược lên trên
+        if (popTop + popHeight > windowBottom - 15) {
+            popTop = windowBottom - popHeight - 15; // 15px là khoảng cách an toàn so với mép dưới
+        }
+
+        // Nếu đẩy lên mà bị tràn qua thanh Header ở trên cùng -> Chặn lại
+        if (popTop < window.scrollY + 10) {
+            popTop = window.scrollY + 10;
+        }
+
+        // Áp dụng tọa độ an toàn vào Form
+        $detailPopover.css({ top: popTop + 'px', left: popLeft + 'px' });
+
+        // Khóa cuộn chuột màn hình ngoài
+        $('.calendar-body-scroll').css('overflow', 'hidden');
+    });
+
+    // C. Đóng và Xóa chi tiết
+    $('#btn-close-detail').on('click', function () {
+        $('#event-detail-popover').hide();
+        $('.calendar-body-scroll').css('overflow', 'auto');
+    });
+
+    $('#btn-delete-event').on('click', function () {
+        let id = $(this).data('id');
+        if (confirm('Bạn có chắc chắn muốn xóa cuộc hẹn này?')) {
+            $.ajax({
+                url: '/api/Appointment/delete/' + id, type: 'DELETE',
+                success: function () {
+                    $('#event-detail-popover').hide();
+                    $('.calendar-body-scroll').css('overflow', 'auto'); // <--- THÊM DÒNG NÀY
+                    loadAppointments();
+                },
+                error: function () { alert('Lỗi khi xóa!'); }
+            });
+        }
     });
 
     // 3. KÉO THẢ DI CHUYỂN FORM VÀ AUTO SQUISH

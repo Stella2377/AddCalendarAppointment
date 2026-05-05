@@ -190,3 +190,81 @@
     </div>
 </div>
 
+<!-- POPOVER CHI TIẾT SỰ KIỆN (DETAIL VIEW) -->
+<div id="event-detail-popover" class="bg-white border" style="display:none; position: absolute; z-index: 1060; width: 360px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); border-radius: 12px; overflow: hidden;">
+    
+    <!-- Header Tools -->
+    <div class="d-flex justify-content-end align-items-center p-2 bg-light" style="border-bottom: 1px solid #f1f3f4;">
+        <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-pen"></i></button>
+        <button id="btn-delete-event" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-envelope"></i></button>
+        <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-ellipsis-v"></i></button>
+        <button id="btn-close-detail" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Body Information -->
+    <div class="p-3">
+        <!-- Title & Time -->
+        <div class="d-flex align-items-start mb-3">
+            <div class="mt-1 me-3 detail-icon" style="width: 24px; text-align: center;">
+                <div id="detail-color-dot" style="width: 14px; height: 14px; border-radius: 4px; background-color: #039be5; display: inline-block;"></div>
+            </div>
+            <div>
+                <h4 id="detail-title" class="mb-1" style="font-size: 18px; color: #3c4043;">(No title)</h4>
+                <div id="detail-time" style="font-size: 14px; color: #3c4043;"></div>
+            </div>
+        </div>
+
+        <!-- Invite via link -->
+        <div class="d-flex align-items-start mb-3">
+            <div class="me-3 detail-icon" style="width: 24px;"></div>
+            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" style="color: #1a73e8; border-color: #dadce0; font-weight: 500;">
+                <i class="fas fa-link me-1"></i> Invite via link
+            </button>
+        </div>
+
+        <!-- Google Meet (Mock) - Ẩn mặc định -->
+        <div id="detail-meet-row" class="d-none align-items-start mb-3">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-video fs-5"></i></div>
+            <div>
+                <div style="color: #1a73e8; font-size: 14px; font-weight: 500;">Join with Google Meet</div>
+                <div style="color: #5f6368; font-size: 13px;">meet.google.com/mock-link</div>
+            </div>
+        </div>
+
+        <!-- Location (Ẩn mặc định) -->
+        <div id="detail-location-row" class="d-none align-items-start mb-3">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-map-marker-alt fs-5"></i></div>
+            <div id="detail-location" style="font-size: 14px; color: #3c4043; padding-top: 2px;"></div>
+        </div>
+
+        <!-- Guests (Ẩn mặc định) -->
+        <div id="detail-guests-row" class="d-none align-items-start mb-3">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-users fs-5"></i></div>
+            <div class="w-100">
+                <div id="detail-guest-count" style="font-size: 14px; color: #3c4043; font-weight: 500;"></div>
+                <div id="detail-guest-list" class="mt-2">
+                    <!-- JS sẽ đổ danh sách guest vào đây -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Description (Ẩn mặc định) -->
+        <div id="detail-description-row" class="d-none align-items-start mb-3">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-align-left fs-5"></i></div>
+            <div id="detail-description" style="font-size: 14px; color: #3c4043; padding-top: 2px; white-space: pre-wrap;"></div>
+        </div>
+
+        <!-- Notification -->
+        <div class="d-flex align-items-center mb-3">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-bell fs-5"></i></div>
+            <div style="font-size: 14px; color: #3c4043;">30 minutes before</div>
+        </div>
+
+        <!-- Calendar Name -->
+        <div class="d-flex align-items-center mb-1">
+            <div class="me-3 detail-icon text-muted" style="width: 24px; text-align: center;"><i class="fas fa-calendar-alt fs-5"></i></div>
+            <div id="detail-calendar-name" style="font-size: 14px; color: #3c4043;">Trương Thị Ngọc Huyền</div>
+        </div>
+    </div>
+</div>
