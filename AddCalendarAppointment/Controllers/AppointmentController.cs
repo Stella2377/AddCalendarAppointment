@@ -350,5 +350,77 @@ namespace AddCalendarAppointment.Controllers
             public string? Notification { get; set; }
             public Guid? TeamId { get; set; }
         }
+
+        // 1. Thêm Class Request để nhận dữ liệu Update từ Javascript
+        public class UpdateAppointmentRequest : CreateAppointmentRequest
+        {
+            public Guid Id { get; set; }
+        }
+
+        // 2. Thêm API xử lý việc Update
+        [HttpPost("update")]
+        public async Task<IActionResult> Update([FromBody] UpdateAppointmentRequest req)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                // Lấy cuộc hẹn CÓ BAO GỒM danh sách Guests từ DB
+                var appt = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == req.Id);
+
+                if (appt == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
+
+                // Cập nhật các thông tin cơ bản
+                appt.Title = string.IsNullOrWhiteSpace(req.Title) ? "(No title)" : req.Title;
+                appt.StartTime = req.StartTime;
+                appt.EndTime = req.EndTime;
+                appt.Location = req.Location;
+                appt.Description = req.Description;
+                appt.ColorCategory = req.ColorCategory;
+                appt.Visibility = req.Visibility;
+                appt.Notification = req.Notification;
+
+                // --- XỬ LÝ CẬP NHẬT GUESTS ---
+                if (req.GuestEmails == null) req.GuestEmails = new List<string>();
+
+                // Lấy ra danh sách User tương ứng với mảng Email gửi lên
+                var newGuestUsers = await _context.Users.Where(u => req.GuestEmails.Contains(u.Email)).ToListAsync();
+                var newGuestUserIds = newGuestUsers.Select(u => u.Id).ToList();
+
+                // 1. Tìm ra những khách mời cũ không còn nằm trong danh sách mới
+                var guestsToRemove = appt.Guests.Where(g => !newGuestUserIds.Contains(g.UserId)).ToList();
+
+                // 2. Xóa từng người khỏi danh sách
+                foreach (var guestToRemove in guestsToRemove)
+                {
+                    appt.Guests.Remove(guestToRemove);
+                }
+
+                // 2. Thêm những khách mời mới (chưa tồn tại trong cuộc hẹn)
+                foreach (var user in newGuestUsers)
+                {
+                    if (!appt.Guests.Any(g => g.UserId == user.Id))
+                    {
+                        appt.Guests.Add(new AppointmentGuest
+                        {
+                            UserId = user.Id,
+                            Status = GuestStatus.Pending
+                        });
+                    }
+                }
+
+                // Lưu toàn bộ thay đổi thẳng vào Database
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
     }
 }
