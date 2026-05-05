@@ -90,87 +90,101 @@
     </div>
 </div>
 
-<!-- POPOVER TẠO SỰ KIỆN MỚI GIỐNG GOOGLE CALENDAR -->
-<div id="event-popover" class="shadow-lg rounded bg-white p-3 border" style="display:none; position: absolute; z-index: 1050; width: 420px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+<!-- POPOVER TẠO SỰ KIỆN MỚI -->
+<div id="event-popover" class="bg-white border" style="display:none; position: absolute; z-index: 1050; width: 440px;">
     
-    <!-- Nút Đóng -->
-    <div class="d-flex justify-content-end mb-1">
+    <!-- Thanh kéo thả (Drag Handle) -->
+    <div id="popover-header" class="d-flex justify-content-between align-items-center px-3 py-2">
+        <i class="bi bi-grip-horizontal text-muted fs-5"></i>
         <button type="button" class="btn-close" id="btn-close-popover"></button>
     </div>
 
-    <!-- Tiêu đề & Loại sự kiện -->
-    <div class="mb-3 px-3">
-        <input type="text" id="popover-title" class="form-control fs-5 border-0 border-bottom rounded-0 px-0 shadow-none mb-2" placeholder="Add title" style="border-color: #1a73e8 !important;" autofocus>
-    </div>
-
-    <!-- Thời gian -->
-    <div class="d-flex align-items-start mb-3 px-3">
-        <div class="me-3 mt-1 text-muted"><i class="bi bi-clock fs-5"></i></div>
-        <div class="flex-grow-1">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <input type="date" id="popover-start-date" class="form-control form-control-sm border-0 bg-light w-auto">
-                <input type="time" id="popover-start-time" class="form-control form-control-sm border-0 bg-light w-auto">
-                <span>-</span>
-                <input type="time" id="popover-end-time" class="form-control form-control-sm border-0 bg-light w-auto">
-            </div>
-            <small class="text-muted">Time zone • Does not repeat</small>
+    <!-- Nội dung form có Scroll -->
+    <div class="popover-body-scroll p-3 pt-0">
+        <!-- Tiêu đề & Nút chọn loại -->
+        <div class="mb-3 px-3">
+            <input type="text" id="popover-title" class="form-control fs-4 border-0 border-bottom rounded-0 px-0 shadow-none mb-3" placeholder="Add title" style="border-color: #1a73e8 !important;" autofocus>
         </div>
-    </div>
 
-    <!-- Guests -->
-    <div class="d-flex align-items-center mb-3 px-3">
-        <div class="me-3 text-muted"><i class="bi bi-people fs-5"></i></div>
-        <input type="text" id="popover-guests" class="form-control form-control-sm border-0 bg-light" placeholder="Add guests (email...)">
-    </div>
-
-    <!-- Location -->
-    <div class="d-flex align-items-center mb-3 px-3">
-        <div class="me-3 text-muted"><i class="bi bi-geo-alt fs-5"></i></div>
-        <input type="text" id="popover-location" class="form-control form-control-sm border-0 bg-light" placeholder="Add location">
-    </div>
-
-    <!-- Description -->
-    <div class="d-flex align-items-center mb-3 px-3">
-        <div class="me-3 text-muted"><i class="bi bi-justify-left fs-5"></i></div>
-        <input type="text" id="popover-description" class="form-control form-control-sm border-0 bg-light" placeholder="Add description">
-    </div>
-
-    <!-- Lịch, Màu sắc, Quyền riêng tư, Thông báo -->
-    <div class="d-flex align-items-start mb-3 px-3">
-        <div class="me-3 mt-1 text-muted"><i class="bi bi-calendar2-event fs-5"></i></div>
-        <div class="flex-grow-1">
-            <div class="d-flex gap-2 mb-2">
-                <!-- Tên các loại lịch (Mock Data) -->
-                <select id="popover-calendar-type" class="form-select form-select-sm border-0 bg-light w-auto">
-                    <option value="Học thuật">Học thuật</option>
-                    <option value="Sinh hoạt CLB">Sinh hoạt CLB</option>
-                    <option value="Cá nhân">Cá nhân</option>
-                </select>
-                <!-- Bảng chọn màu -->
-                <input type="color" id="popover-color" class="form-control form-control-color border-0 p-0" value="#039be5" style="width: 30px; height: 30px; cursor: pointer;" title="Choose color">
+        <!-- Thời gian -->
+        <div class="d-flex align-items-start mb-3 px-3">
+            <div class="me-3 mt-1 text-muted"><i class="bi bi-clock fs-5"></i></div>
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap time-input-group">
+                    <input type="date" id="popover-start-date" class="form-control form-control-sm border-0 bg-light">
+                    <input type="time" id="popover-start-time" class="form-control form-control-sm border-0 bg-light">
+                    <span>-</span>
+                    <input type="time" id="popover-end-time" class="form-control form-control-sm border-0 bg-light">
+                </div>
+                <small class="text-muted">Time zone • Does not repeat</small>
             </div>
-            <div class="d-flex gap-2 mb-2">
-                <select class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                    <option>Busy</option>
-                    <option>Free</option>
-                </select>
-                <select id="popover-visibility" class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                    <option value="0">Default visibility</option>
-                    <option value="1">Public</option>
-                    <option value="2">Private</option>
-                </select>
+        </div>
+
+        <!-- Guests -->
+        <div class="d-flex align-items-start mb-3 px-3">
+            <div class="me-3 mt-1 text-muted"><i class="bi bi-people fs-5"></i></div>
+            <div class="flex-grow-1">
+                <!-- Nơi chứa các tag Guest đã thêm -->
+                <div id="guest-badges-container" class="mb-1 d-flex flex-wrap gap-1"></div>
+                
+                <!-- Ô nhập email có gợi ý -->
+                <input type="email" id="popover-guests" class="form-control form-control-sm border-0 bg-light" placeholder="Nhập Email và nhấn Enter" list="guest-suggestions">
+                <datalist id="guest-suggestions"></datalist>
             </div>
-            <div class="d-flex gap-2">
-                <select class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                    <option>30 minutes before</option>
-                    <option>10 minutes before</option>
-                </select>
+        </div>
+
+        <!-- Location & Description -->
+        <div class="d-flex align-items-center mb-3 px-3">
+            <div class="me-3 text-muted"><i class="bi bi-geo-alt fs-5"></i></div>
+            <input type="text" id="popover-location" class="form-control form-control-sm border-0 bg-light" placeholder="Add location">
+        </div>
+        <div class="d-flex align-items-center mb-3 px-3">
+            <div class="me-3 text-muted"><i class="bi bi-justify-left fs-5"></i></div>
+            <input type="text" id="popover-description" class="form-control form-control-sm border-0 bg-light" placeholder="Add description">
+        </div>
+
+        <!-- Lịch & Thông báo -->
+        <div class="d-flex align-items-start mb-2 px-3">
+            <div class="me-3 mt-1 text-muted"><i class="bi bi-calendar2-event fs-5"></i></div>
+            <div class="flex-grow-1">
+                <!-- Dropdown Chọn Lịch -->
+                <div class="d-flex gap-2 mb-2">
+                    <select id="popover-calendar-type" class="form-select form-select-sm border-0 bg-light w-auto">
+                        <option value="Học thuật">Trương Thị Ngọc Huyền (Học thuật)</option>
+                        <option value="Sinh hoạt CLB">Trương Thị Ngọc Huyền (CLB)</option>
+                        <option value="Cá nhân">Trương Thị Ngọc Huyền (Cá nhân)</option>
+                    </select>
+                    <input type="color" id="popover-color" class="form-control form-control-color border-0 p-0" value="#039be5" style="width: 30px; height: 30px; cursor: pointer;">
+                </div>
+                
+                <div class="d-flex gap-2 mb-3">
+                    <select class="form-select form-select-sm border-0 bg-light w-auto text-muted"><option>Busy</option><option>Free</option></select>
+                    <select id="popover-visibility" class="form-select form-select-sm border-0 bg-light w-auto text-muted">
+                        <option value="0">Default visibility</option>
+                        <option value="1">Public</option>
+                        <option value="2">Private</option>
+                    </select>
+                </div>
+
+                <!-- Danh sách Notification -->
+                <div id="notification-list">
+                    <div class="d-flex gap-2 mb-2 notification-item align-items-center">
+                        <i class="bi bi-bell text-muted me-1"></i>
+                        <select class="form-select form-select-sm border-0 bg-light w-auto text-muted">
+                            <option>30 minutes before</option>
+                            <option>10 minutes before</option>
+                            <option>1 hour before</option>
+                        </select>
+                        <button type="button" class="btn btn-sm text-muted btn-remove-notify"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 mt-1" id="btn-add-notification">Add notification</button>
             </div>
         </div>
     </div>
 
     <!-- Footer -->
-    <div class="d-flex justify-content-end align-items-center mt-2 px-3 pt-2">
+    <div class="d-flex justify-content-end align-items-center px-3 py-3 border-top">
         <button class="btn btn-light btn-sm me-2 text-primary fw-bold bg-transparent">More options</button>
         <button id="btn-save-event" class="btn btn-primary px-4 rounded-pill">Save</button>
     </div>
