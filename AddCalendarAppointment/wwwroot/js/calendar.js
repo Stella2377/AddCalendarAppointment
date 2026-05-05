@@ -462,16 +462,40 @@ $(document).on('drop', '.day-col', function (e) {
     let startTime = `${newDateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`;
     let endTime = `${newDateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
 
+    let currentId = draggedEventId; // Lưu lại ID vào biến cục bộ
+
     $.ajax({
         url: '/api/Appointment/update-time',
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({
-            Id: draggedEventId,
+            Id: currentId,
             StartTime: startTime,
             EndTime: endTime
         }),
         success: function (res) {
+            if (res.isOverlap) {
+                if (confirm(res.message)) {
+                    $.ajax({
+                        url: '/api/Appointment/update-time',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            Id: currentId,
+                            StartTime: startTime,
+                            EndTime: endTime,
+                            OverwriteOverlap: true
+                        }),
+                        success: function (res2) {
+                            if (res2.success) loadAppointments();
+                            else alert("Lưu thất bại: " + res2.message);
+                        }
+                    });
+                } else {
+                    loadAppointments();
+                }
+                return;
+            }
             if (res.success) loadAppointments();
         },
         error: function () {
@@ -1052,6 +1076,30 @@ $(document).ready(function () {
                     return;
                 }
 
+                if (res.isOverlap) {
+                    if (confirm(res.message)) {
+                        appointmentData.OverwriteOverlap = true;
+                        $.ajax({
+                            url: '/api/Appointment/create',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(appointmentData),
+                            success: function (retryRes) {
+                                if (retryRes.success) {
+                                    $('#event-popover').hide();
+                                    $('.appointment-ghost').remove();
+                                    $ghostEvent = null;
+                                    loadAppointments();
+                                } else {
+                                    alert("Lưu thất bại sau khi thay thế: " + retryRes.message);
+                                }
+                            }
+                        });
+                    }
+                    $('#btn-save-event').prop('disabled', false).text('Save');
+                    return;
+                }
+
                 if (res.success) {
                     $('#event-popover').hide();
                     $('.appointment-ghost').remove();
@@ -1494,11 +1542,60 @@ $('#btn-save-fs-event').on('click', function () {
                 return;
             }
 
+            if (res.suggestOverlapReplacement) {
+                if (confirm(res.message)) {
+                    $.post(`/api/Appointment/delete/${res.oldApptId}`, function (delRes) {
+                        if (delRes.success) {
+                            $.ajax({
+                                url: '/api/Appointment/create',
+                                type: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify(appointmentData),
+                                success: function (retryRes) {
+                                    if (retryRes.success) {
+                                        $('#fullScreenEventModal').modal('hide');
+                                        loadAppointments();
+                                    } else {
+                                        alert("Lưu thất bại sau khi thay thế: " + retryRes.message);
+                                    }
+                                }
+                            });
+                        } else {
+                            alert("Xóa lịch cũ thất bại: " + delRes.message);
+                        }
+                    });
+                }
+                $(this).prop('disabled', false).text('Save');
+                return;
+            }
+
+            if (res.isOverlap) {
+                if (confirm(res.message)) {
+                    appointmentData.OverwriteOverlap = true;
+                    $.ajax({
+                        url: '/api/Appointment/update',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(appointmentData),
+                        success: function (retryRes) {
+                            if (retryRes.success) {
+                                $('#fullScreenEventModal').modal('hide');
+                                loadAppointments();
+                            } else {
+                                alert("Lưu thất bại sau khi thay thế: " + retryRes.message);
+                            }
+                        }
+                    });
+                }
+                $(this).prop('disabled', false).text('Save');
+                return;
+            }
+
             if (res.success) {
                 $('#fullScreenEventModal').modal('hide');
                 loadAppointments();
             } else {
-                alert("Lưu thất bại: " + res.message);
+                alert("Lưu thất bại: " + (res.message || "Lỗi không xác định"));
             }
         }.bind(this),
         error: function (xhr) {

@@ -30,7 +30,12 @@ namespace AddCalendarAppointment.Services
         public async Task<List<Appointment>> GetAppointmentsAsync(Guid userId)
         {
             return await _context.Appointments
-                .Where(a => a.OwnerId == userId && !a.IsDeleted)
+                .Include(a => a.Guests)
+                .Include(a => a.Team)
+                .Where(a => !a.IsDeleted && (
+                    (a.Visibility == VisibilityType.Private && a.OwnerId == userId) || 
+                    (a.Guests.Any(g => g.UserId == userId))
+                ))
                 .ToListAsync();
         }
 
@@ -50,7 +55,7 @@ namespace AddCalendarAppointment.Services
         }
 
 
-        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedAppointmentId)> CreateAppointmentAsync(Appointment appointment, Guid userId)
+        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedAppointmentId, bool suggestOverlapReplacement, Appointment overlappingAppt)> CreateAppointmentAsync(Appointment appointment, Guid userId)
         {
             if (appointment.EndTime == default || appointment.EndTime == appointment.StartTime)
             {
@@ -62,12 +67,13 @@ namespace AddCalendarAppointment.Services
                 appointment.EndTime = appointment.EndTime.AddDays(1);
             }
 
-            bool hasOverlap = await _context.Appointments
-                .AnyAsync(a => a.OwnerId == userId && a.StartTime < appointment.EndTime && a.EndTime > appointment.StartTime && !a.IsDeleted);
+            var overlappingAppt = await _context.Appointments
+                .FirstOrDefaultAsync(a => a.OwnerId == userId && a.StartTime < appointment.EndTime && a.EndTime > appointment.StartTime && !a.IsDeleted);
             
-            if (hasOverlap)
+            if (overlappingAppt != null)
             {
-                return (false, "Bạn đã có một lịch hẹn khác trùng vào khung giờ này!", false, null);
+                // Gợi ý thay thế nếu bị trùng với bất kỳ lịch nào của chính mình
+                return (false, "Overlap detected", false, null, true, overlappingAppt);
             }
 
             if (appointment.Visibility == VisibilityType.Public && appointment.TeamId != null)
@@ -88,7 +94,7 @@ namespace AddCalendarAppointment.Services
                 if (exactDuplicate != null)
                 {
                     // Trả về suggestTeamJoin = true và ID của cuộc họp đó để Frontend hỏi Join
-                    return (false, "Duplicate found", true, exactDuplicate.Id);
+                    return (false, "Duplicate found", true, exactDuplicate.Id, false, null);
                 }
 
                 // Kiểm tra xem có bị chồng lấn (overlap) với cuộc họp Public nào khác của Team không
@@ -109,7 +115,7 @@ namespace AddCalendarAppointment.Services
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
 
-            return (true, string.Empty, false, null);
+            return (true, string.Empty, false, null, false, null);
         }
 
         public async Task<bool> EditRecurringAsync(Guid originalId, RecurringEditType editType, Appointment newData)
