@@ -141,10 +141,10 @@ namespace AddCalendarAppointment.Controllers
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-                return Ok(new { suggestTeamJoin = true, teamId = result.suggestedTeamId, message = "Would you like to join the existing team meeting?" });
+                return Ok(new { suggestTeamJoin = true, appointmentId = result.suggestedAppointmentId, message = "Phát hiện cuộc họp nhóm trùng tên và thời lượng! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?" });
 
             if (!result.isSuccess)
-                return BadRequest(new { error = result.errorMessage });
+                return BadRequest(new { success = false, message = result.errorMessage });
 
             return Ok(new { success = true });
         }

@@ -1,4 +1,4 @@
-﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Data;
 using AddCalendarAppointment.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,7 +50,7 @@ namespace AddCalendarAppointment.Services
         }
 
 
-        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedTeamId)> CreateAppointmentAsync(Appointment appointment, Guid userId)
+        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedAppointmentId)> CreateAppointmentAsync(Appointment appointment, Guid userId)
         {
             if (appointment.EndTime == default || appointment.EndTime == appointment.StartTime)
             {
@@ -63,32 +63,46 @@ namespace AddCalendarAppointment.Services
             }
 
             bool hasOverlap = await _context.Appointments
-                .AnyAsync(a => a.OwnerId == userId && a.StartTime < appointment.EndTime && a.EndTime > appointment.StartTime);
-
+                .AnyAsync(a => a.OwnerId == userId && a.StartTime < appointment.EndTime && a.EndTime > appointment.StartTime && !a.IsDeleted);
+            
             if (hasOverlap)
             {
-                return (false, "Overlapping appointments are not allowed.", false, null);
+                return (false, "Bạn đã có một lịch hẹn khác trùng vào khung giờ này!", false, null);
             }
 
-            // Tính toán duration
-            TimeSpan currentDuration = appointment.EndTime - appointment.StartTime;
-
-            // Bước 1: Lấy danh sách các cuộc hẹn trùng tên và người dùng có trong Team từ Database lên
-            var potentialDuplicates = await _context.Appointments
-                .Include(a => a.Team)
-                .ThenInclude(t => t.Members)
-                .Where(a => a.TeamId != null
-                         && a.Title.Contains(appointment.Title)
-                         && a.Team.Members.Any(m => m.Id == userId))
-                .ToListAsync();
-
-            // Bước 2: Dùng C# để kiểm tra khoảng thời gian (tránh lỗi EF Core Translation)
-            var teamDuplicate = potentialDuplicates
-                .FirstOrDefault(a => (a.EndTime - a.StartTime) == currentDuration);
-
-            if (teamDuplicate != null)
+            if (appointment.Visibility == VisibilityType.Public && appointment.TeamId != null)
             {
-                return (false, "Duplicate found in team.", true, teamDuplicate.TeamId);
+                // Tính toán duration
+                TimeSpan currentDuration = appointment.EndTime - appointment.StartTime;
+
+                // Kiểm tra xem trong Team đã có cuộc họp nào CÙNG TÊN và CÙNG THỜI LƯỢNG chưa
+                var teamDuplicate = await _context.Appointments
+                    .Where(a => a.TeamId == appointment.TeamId
+                             && a.Visibility == VisibilityType.Public
+                             && a.Title == appointment.Title
+                             && !a.IsDeleted)
+                    .ToListAsync();
+
+                var exactDuplicate = teamDuplicate.FirstOrDefault(a => (a.EndTime - a.StartTime) == currentDuration);
+
+                if (exactDuplicate != null)
+                {
+                    // Trả về suggestTeamJoin = true và ID của cuộc họp đó để Frontend hỏi Join
+                    return (false, "Duplicate found", true, exactDuplicate.Id);
+                }
+
+                // Kiểm tra xem có bị chồng lấn (overlap) với cuộc họp Public nào khác của Team không
+                bool hasTeamOverlap = await _context.Appointments
+                    .AnyAsync(a => a.TeamId == appointment.TeamId
+                                 && a.Visibility == VisibilityType.Public
+                                 && a.StartTime < appointment.EndTime
+                                 && a.EndTime > appointment.StartTime
+                                 && !a.IsDeleted);
+
+                if (hasTeamOverlap)
+                {
+                    return (false, "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra. Vui lòng đổi giờ, đổi tên hoặc chuyển sang chế độ Private.", false, null);
+                }
             }
 
             appointment.OwnerId = userId;

@@ -1035,19 +1035,40 @@ $(document).ready(function () {
             contentType: 'application/json',
             data: JSON.stringify(appointmentData),
             success: function (res) {
-                $('#event-popover').hide();
-                $('.appointment-ghost').remove();
-                $ghostEvent = null;
-                guestEmails = [];
-                $('#guest-badges-container').empty();
+                if (res.suggestTeamJoin) {
+                    if (confirm(res.message)) {
+                        $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                            if (joinRes.success) {
+                                $('#event-popover').hide();
+                                $('.appointment-ghost').remove();
+                                $ghostEvent = null;
+                                loadAppointments();
+                            } else {
+                                alert("Tham gia thất bại: " + joinRes.message);
+                            }
+                        });
+                    }
+                    $('#btn-save-event').prop('disabled', false).text('Save');
+                    return;
+                }
 
                 if (res.success) {
+                    $('#event-popover').hide();
+                    $('.appointment-ghost').remove();
+                    $ghostEvent = null;
+                    guestEmails = [];
+                    $('#guest-badges-container').empty();
                     loadAppointments();
+                } else {
+                    alert("Lưu thất bại: " + res.message);
+                    $('#btn-save-event').prop('disabled', false).text('Save');
                 }
             },
-            error: function (err) {
-                console.error("Lỗi từ server:", err.responseText);
-                alert("Lưu thất bại! Bạn F12 xem tab Network hoặc Console nhé.");
+            error: function (xhr) {
+                let msg = "Lỗi kết nối server!";
+                if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                alert(msg);
+                $('#btn-save-event').prop('disabled', false).text('Save');
             },
             complete: function () {
                 $('#btn-save-event').prop('disabled', false).text('Save');
@@ -1458,15 +1479,32 @@ $('#btn-save-fs-event').on('click', function () {
         contentType: 'application/json',
         data: JSON.stringify(appointmentData),
         success: function (res) {
+            if (res.suggestTeamJoin) {
+                if (confirm(res.message)) {
+                    $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                        if (joinRes.success) {
+                            $('#fullScreenEventModal').modal('hide');
+                            loadAppointments();
+                        } else {
+                            alert("Tham gia thất bại: " + joinRes.message);
+                        }
+                    });
+                }
+                $(this).prop('disabled', false).text('Save');
+                return;
+            }
+
             if (res.success) {
                 $('#fullScreenEventModal').modal('hide');
                 loadAppointments();
             } else {
                 alert("Lưu thất bại: " + res.message);
             }
-        },
-        error: function () {
-            alert("Lỗi kết nối server!");
+        }.bind(this),
+        error: function (xhr) {
+            let msg = "Lỗi kết nối server!";
+            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+            alert(msg);
         },
         complete: () => {
             $(this).prop('disabled', false).text('Save');
