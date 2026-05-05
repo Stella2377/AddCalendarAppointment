@@ -1,5 +1,97 @@
 ﻿let currDate = new Date();
 let currentViewMode = 7; // Mặc định là 7 ngày (Week)
+
+// ==========================================
+// QUẢN LÝ BẢNG MÀU VÀ SIDEBAR (MY CALENDARS)
+// ==========================================
+
+// 1. Mảng 11 màu cố định theo yêu cầu
+const CALENDAR_COLORS = [
+    { hex: '#d50000', defaultName: 'Red' },
+    { hex: '#e67c73', defaultName: 'Light Red' },
+    { hex: '#f4511e', defaultName: 'Orange' },
+    { hex: '#f6bf26', defaultName: 'Yellow' },
+    { hex: '#33b679', defaultName: 'Light Green' },
+    { hex: '#0b8043', defaultName: 'Green' },
+    { hex: '#039be5', defaultName: 'Blue' },       // Màu mặc định
+    { hex: '#3f51b5', defaultName: 'Indigo' },
+    { hex: '#7986cb', defaultName: 'Light Purple' },
+    { hex: '#8e24aa', defaultName: 'Purple' },
+    { hex: '#616161', defaultName: 'Grey' }
+];
+
+// 2. Lấy dữ liệu tên lịch từ LocalStorage
+function getCalendarCategories() {
+    let savedNames = JSON.parse(localStorage.getItem('customCalendarNames')) || {};
+    return CALENDAR_COLORS.map(c => ({
+        hex: c.hex,
+        displayName: savedNames[c.hex] ? savedNames[c.hex] : `(${c.defaultName})`,
+        isDefault: !savedNames[c.hex]
+    }));
+}
+
+// 3. Render danh sách ra Sidebar
+function renderSidebarCalendars() {
+    let categories = getCalendarCategories();
+    let html = '';
+
+    categories.forEach(cat => {
+        html += `
+            <div class="form-check d-flex align-items-center mb-2">
+                <!-- THÊM CLASS calendar-color-filter VÀO ĐÂY -->
+                <input class="form-check-input me-2 shadow-none calendar-color-filter" type="checkbox" value="${cat.hex}" checked 
+                       style="background-color: ${cat.hex}; border-color: ${cat.hex}; cursor: pointer; border-radius: 3px;">
+                <span class="editable-category" data-color="${cat.hex}" style="font-size: 13px; cursor: text; flex-grow: 1; padding: 2px 4px; border-radius: 4px;">
+                    ${cat.displayName}
+                </span>
+            </div>
+        `;
+    });
+
+    $('#my-calendars-list').html(html);
+}
+
+// 4. Xử lý sự kiện click để đổi tên Lịch ở Sidebar
+$(document).on('click', '.editable-category', function () {
+    let $el = $(this);
+    if ($el.find('input').length > 0) return; // Đang ở chế độ sửa thì bỏ qua
+
+    let currentColor = $el.data('color');
+    let currentText = $el.text().trim();
+
+    // Nếu đang là tên mặc định (có dấu ngoặc đơn), xóa đi để người dùng gõ mới
+    if (currentText.startsWith('(') && currentText.endsWith(')')) {
+        currentText = '';
+    }
+
+    // Biến text thành ô input
+    let $input = $(`<input type="text" class="form-control form-control-sm p-0 px-1" value="${currentText}" style="height: 22px; font-size: 13px;">`);
+    $el.html($input);
+    $input.focus();
+
+    // Lưu lại khi người dùng bấm Enter hoặc click chuột ra ngoài
+    $input.on('blur keypress', function (e) {
+        if (e.type === 'keypress' && e.which !== 13) return; // Chỉ nhận phím Enter
+
+        let newText = $(this).val().trim();
+        let savedNames = JSON.parse(localStorage.getItem('customCalendarNames')) || {};
+
+        if (newText) {
+            savedNames[currentColor] = newText;
+        } else {
+            delete savedNames[currentColor]; // Nếu để trống thì quay về mặc định
+        }
+
+        localStorage.setItem('customCalendarNames', JSON.stringify(savedNames));
+        renderSidebarCalendars(); // Vẽ lại sidebar
+    });
+});
+
+// Chạy hàm render khi web vừa load xong
+$(document).ready(function () {
+    renderSidebarCalendars();
+});
+
 $(document).ready(function () {
     syncAllCalendars();
 
@@ -246,6 +338,7 @@ function loadAppointments() {
                     $column.append(blockHtml);
                 }
             });
+            applyColorFilter();
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -490,7 +583,25 @@ $(document).ready(function () {
         $('#popover-location').val('');
         $('#popover-description').val('');
         $('#popover-guests').val('');
-        $('#popover-color').val('#039be5');
+
+        // color
+        let categories = getCalendarCategories();
+        let dropdownOptions = categories.map(c => {
+            // Thêm icon cục màu tròn nhỏ bằng ký tự Unicode để dễ nhận diện
+            return `<option value="${c.hex}" style="color: ${c.hex}; font-weight: bold;">
+                &#9679; &nbsp; ${c.displayName}
+            </option>`;
+        }).join('');
+
+        let $colorSelect = $('#popover-color-select');
+        $colorSelect.html(dropdownOptions);
+        $colorSelect.val('#039be5'); // Mặc định chọn màu Blue (#039be5)
+
+        // Đổi màu font chữ của select cho khớp với màu đang chọn
+        $colorSelect.css('color', '#039be5');
+        $colorSelect.off('change').on('change', function () {
+            $(this).css('color', $(this).val());
+        });
 
         $('#popover-start-date').val(dateStr);
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
@@ -851,7 +962,7 @@ $(document).ready(function () {
             EndTime: toLocalISOString(finalEnd),
             Location: $('#popover-location').val(),
             Description: $('#popover-description').val(),
-            ColorCategory: $('#popover-color').val(),
+            ColorCategory: $('#popover-color-select').val(),
             Visibility: parseInt($('#popover-visibility').val() || "0"),
             IsRecurring: false,
             RecurringRule: 0,
@@ -892,3 +1003,48 @@ function toLocalISOString(date) {
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' +
         pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
 }
+
+
+
+// HÀM HỖ TRỢ HIỂN THỊ THỜI GIAN THEO PIXEL (1px = 1 phút)
+function formatTimeFromPixels(topPx, heightPx) {
+    let startHour = Math.floor(topPx / 60);
+    let startMin = Math.floor(topPx % 60);
+    let endTopPx = topPx + heightPx;
+    let endHour = Math.floor(endTopPx / 60);
+    let endMin = Math.floor(endTopPx % 60);
+
+    let sDate = new Date(); sDate.setHours(startHour, startMin, 0);
+    let eDate = new Date(); eDate.setHours(endHour, endMin, 0);
+
+    let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+    return sDate.toLocaleTimeString('en-US', timeOptions) + " - " + eDate.toLocaleTimeString('en-US', timeOptions);
+}
+
+// ==========================================
+// HÀM LỌC SỰ KIỆN THEO MÀU SẮC CHECKBOX
+// ==========================================
+function applyColorFilter() {
+    // 1. Lấy danh sách các mã màu (hex) đang được tick chọn
+    let checkedColors = $('.calendar-color-filter:checked').map(function () {
+        return $(this).val().toLowerCase(); // Chuyển về chữ thường để so sánh không bị lỗi
+    }).get();
+
+    // 2. Duyệt qua tất cả các khối sự kiện trên lịch
+    $('.appointment-block').each(function () {
+        let eventColor = $(this).data('color');
+        if (eventColor) eventColor = eventColor.toLowerCase();
+
+        // 3. Nếu màu của sự kiện nằm trong danh sách checked -> Hiện, ngược lại -> Ẩn
+        if (checkedColors.includes(eventColor)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+}
+
+// Lắng nghe thao tác click vào ô Checkbox màu ở Sidebar
+$(document).on('change', '.calendar-color-filter', function () {
+    applyColorFilter();
+});

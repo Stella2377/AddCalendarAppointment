@@ -211,18 +211,18 @@ namespace AddCalendarAppointment.Controllers
             public string EndTime { get; set; }
         }
 
+       
         public class CreateAppointmentRequest
-        {
-            public string Title { get; set; }
-            public DateTime StartTime { get; set; }
-            public DateTime EndTime { get; set; }
-            public string? Location { get; set; }
-            public string? Description { get; set; }
-            public string? ColorCategory { get; set; }
-            public VisibilityType Visibility { get; set; }
-            public bool IsRecurring { get; set; }
-            public RecurringType RecurringRule { get; set; }
-            public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
-        }
+    {
+        public string Title { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? Location { get; set; }
+        public string? Description { get; set; }
+        public string? ColorCategory { get; set; }
+        public VisibilityType Visibility { get; set; }
+        public bool IsRecurring { get; set; }
+        public RecurringType RecurringRule { get; set; }
+        public List<string>? GuestEmails { get; set; } // Nhận danh sách Email từ Frontend
     }
 }
