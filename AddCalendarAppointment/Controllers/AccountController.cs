@@ -63,7 +63,11 @@ namespace AddCalendarAppointment.Controllers
             if (user != null)
             {
                 // Lưu session khi đăng nhập thành công
+                // 1. Lưu UserId để kiểm tra quyền truy cập
                 HttpContext.Session.SetString("UserId", user.Id.ToString());
+
+                // 2. Lưu thêm Email hoặc Username để hiển thị lên Header
+                HttpContext.Session.SetString("UserEmail", user.Email);
                 return Json(new { success = true });
             }
 
@@ -73,7 +77,7 @@ namespace AddCalendarAppointment.Controllers
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return RedirectToAction("Index");
+            return RedirectToAction("Index", "Account");
         }
     }
 }
