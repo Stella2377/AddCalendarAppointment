@@ -17,16 +17,16 @@ namespace AddCalendarAppointment.Models
 
         public bool IsRecurring { get; set; }
         public RecurringType RecurringRule { get; set; }
-
+         
         public bool IsDeleted { get; set; }
         public DateTime? DeletedDate { get; set; }
 
         public Guid OwnerId { get; set; }
-        public User Owner { get; set; }
+        public User? Owner { get; set; }
 
         public Guid? TeamId { get; set; }
-        public Team Team { get; set; }
+        public Team? Team { get; set; }
 
-        public ICollection<AppointmentGuest> Guests { get; set; }
+        public ICollection<AppointmentGuest>? Guests { get; set; }
     }
 }

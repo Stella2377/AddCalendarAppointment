@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
-using AddCalendarAppointment.Models;
+﻿using AddCalendarAppointment.Models;
 using AddCalendarAppointment.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace AddCalendarAppointment.Controllers
 {
@@ -22,18 +23,17 @@ namespace AddCalendarAppointment.Controllers
 
         private Guid GetCurrentUserId()
         {
-            //var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // Tìm ID người dùng cất trong Session (do AccountController lưu)
+            var userIdStr = HttpContext.Session.GetString("UserId");
 
-            //if (Guid.TryParse(userIdStr, out Guid userId))
-            //{
-            //    return userId;
-            //}
+            // Nếu có Session và ép kiểu thành Guid thành công
+            if (!string.IsNullOrEmpty(userIdStr) && Guid.TryParse(userIdStr, out Guid userId))
+            {
+                return userId; // Trả về ID thật của người dùng
+            }
 
-            //// Nếu chưa đăng nhập hoặc lỗi, trả về Guid.Empty để tránh crash
-            //return Guid.Empty;
-
-            return Guid.Parse("e357cdd6-59fc-4bfd-8ad0-6c9852b96245");
-
+            // Nếu Session trống (chưa đăng nhập hoặc Session hết hạn)
+            throw new UnauthorizedAccessException("Bạn chưa đăng nhập hoặc Session đã hết hạn!");
         }
 
         [HttpGet("GetAppointments")]
@@ -47,7 +47,7 @@ namespace AddCalendarAppointment.Controllers
                 id = a.Id,
                 title = a.Title,
                 location = a.Location, // Bổ sung trường Location
-                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),    
                 end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"), // Backend đã truyền đủ Start/End
                 color = a.ColorCategory ?? "#039be5"
             });
@@ -59,6 +59,9 @@ namespace AddCalendarAppointment.Controllers
         public async Task<IActionResult> Create([FromBody] Appointment appointment)
         {
             var userId = GetCurrentUserId();
+            appointment.OwnerId = userId;
+
+            // Đẩy xuống Service để lưu vào DB
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)

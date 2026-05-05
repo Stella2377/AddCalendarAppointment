@@ -247,4 +247,140 @@ function updateMainMonthTitle(date) {
     }
 }
 
-// Các hàm Edit/Duplicate giữ nguyên logic của bạn...
+
+// ==========================================
+// KÉO THẢ VÀ HIỂN THỊ POPOVER TẠO CUỘC HẸN
+// ==========================================
+
+let isCreating = false;
+let startY = 0;
+let $dragCol = null;
+let $ghostEvent = null;
+
+$(document).ready(function () {
+    $(document).on('mousedown', '.day-col', function (e) {
+        if ($(e.target).closest('.appointment-block').length > 0) return;
+        $('#event-popover').hide();
+
+        isCreating = true;
+        $dragCol = $(this);
+        startY = e.pageY - $dragCol.offset().top;
+
+        $ghostEvent = $('<div class="appointment-ghost"></div>').css({
+            position: 'absolute', top: startY + 'px', left: '0', width: '95%', height: '0px',
+            backgroundColor: 'rgba(3, 155, 229, 0.4)', border: '1px solid #039be5', zIndex: 5, borderRadius: '4px'
+        });
+        $dragCol.append($ghostEvent);
+    });
+
+    $(document).on('mousemove', function (e) {
+        if (!isCreating || !$ghostEvent) return;
+        let currentY = e.pageY - $dragCol.offset().top;
+        let top = Math.min(startY, currentY);
+        let height = Math.abs(currentY - startY);
+        $ghostEvent.css({ top: top + 'px', height: height + 'px' });
+    });
+
+    $(document).on('mouseup', function (e) {
+        if (!isCreating) return;
+        isCreating = false;
+
+        let finalTop = parseFloat($ghostEvent.css('top'));
+        let finalHeight = parseFloat($ghostEvent.css('height'));
+        if (finalHeight < 15) finalHeight = 30; // Mặc định 30 phút
+
+        let dateStr = $dragCol.data('date');
+
+        let startHour = Math.floor(finalTop / 60);
+        let startMin = Math.floor(finalTop % 60);
+        let endTop = finalTop + finalHeight;
+        let endHour = Math.floor(endTop / 60);
+        let endMin = Math.floor(endTop % 60);
+
+        // Đổ dữ liệu tính toán được vào Form của Popover
+        $('#popover-title').val('');
+        $('#popover-location').val('');
+        $('#popover-description').val('');
+        $('#popover-guests').val('');
+        $('#popover-color').val('#039be5'); // Xanh mặc định
+
+        $('#popover-start-date').val(dateStr);
+        $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
+        $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+
+        // Tính vị trí Popover
+        let rect = $ghostEvent[0].getBoundingClientRect();
+        let popoverLeft = rect.right + 10;
+        if (popoverLeft + 420 > window.innerWidth) popoverLeft = rect.left - 430;
+
+        $('#event-popover').css({ top: rect.top + window.scrollY + 'px', left: popoverLeft + 'px' }).show();
+        $('#popover-title').focus();
+    });
+
+    // Tắt popover
+    $('#btn-close-popover').on('click', function () {
+        $('#event-popover').hide();
+        if ($ghostEvent) $ghostEvent.remove();
+    });
+
+    // LƯU SỰ KIỆN XUỐNG DB
+    $('#btn-save-event').off('click').on('click', function () {
+        let title = $('#popover-title').val();
+        if (!title || title.trim() === "") {
+            alert("Vui lòng nhập tiêu đề!");
+            return;
+        }
+
+        // Lấy lại thời gian từ ô input (người dùng có thể đã sửa đổi)
+        let startDateVal = $('#popover-start-date').val();
+        let startTimeVal = $('#popover-start-time').val();
+        let endTimeVal = $('#popover-end-time').val();
+
+        // Gắn lại thành Date object hoàn chỉnh
+        let finalStart = new Date(`${startDateVal}T${startTimeVal}:00`);
+        let finalEnd = new Date(`${startDateVal}T${endTimeVal}:00`);
+
+        let appointmentData = {
+            Title: title,
+            StartTime: toLocalISOString(finalStart),
+            EndTime: toLocalISOString(finalEnd),
+            Location: $('#popover-location').val(),
+            Description: $('#popover-description').val(),
+            ColorCategory: $('#popover-color').val(),
+            Visibility: parseInt($('#popover-visibility').val() || "0"),
+            IsRecurring: false,
+            RecurringRule: 0
+            // Nếu có chức năng gửi Email cho Guests thì xử lý mảng Guests ở đây
+        };
+
+        $('#btn-save-event').prop('disabled', true).text('Đang lưu...');
+
+        $.ajax({
+            url: '/api/Appointment/create',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(appointmentData),
+            success: function (res) {
+                $('#event-popover').hide();
+                if ($ghostEvent) $ghostEvent.remove();
+
+                if (res.success) {
+                    loadAppointments(); // Cập nhật lại lịch
+                }
+            },
+            error: function (err) {
+                console.error("Lỗi từ server:", err.responseText);
+                alert("Lưu thất bại! Bạn F12 xem tab Network hoặc Console nhé.");
+            },
+            complete: function () {
+                $('#btn-save-event').prop('disabled', false).text('Save');
+            }
+        });
+    });
+});
+
+function toLocalISOString(date) {
+    const pad = n => n < 10 ? '0' + n : n;
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' +
+        pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+}

@@ -278,6 +278,7 @@ body {
 
 /* Các cột ngày */
 .day-col {
+    cursor: crosshair; /* Báo hiệu có thể kéo thả tạo sự kiện */
     border-right: 1px solid var(--border-color);
     position: relative;
 }

@@ -63,13 +63,21 @@ namespace AddCalendarAppointment.Services
                 return (false, "Overlapping appointments are not allowed.", false, null);
             }
 
+            // Tính toán duration
             TimeSpan currentDuration = appointment.EndTime - appointment.StartTime;
 
-            var teamDuplicate = await _context.Appointments
+            // Bước 1: Lấy danh sách các cuộc hẹn trùng tên và người dùng có trong Team từ Database lên
+            var potentialDuplicates = await _context.Appointments
                 .Include(a => a.Team)
                 .ThenInclude(t => t.Members)
-                .Where(a => a.TeamId != null && a.Title.Contains(appointment.Title))
-                .FirstOrDefaultAsync(a => (a.EndTime - a.StartTime) == currentDuration && a.Team.Members.Any(m => m.Id == userId));
+                .Where(a => a.TeamId != null
+                         && a.Title.Contains(appointment.Title)
+                         && a.Team.Members.Any(m => m.Id == userId))
+                .ToListAsync();
+
+            // Bước 2: Dùng C# để kiểm tra khoảng thời gian (tránh lỗi EF Core Translation)
+            var teamDuplicate = potentialDuplicates
+                .FirstOrDefault(a => (a.EndTime - a.StartTime) == currentDuration);
 
             if (teamDuplicate != null)
             {
