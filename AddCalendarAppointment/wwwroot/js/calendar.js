@@ -329,6 +329,7 @@ function loadAppointments() {
                              data-description="${descStr}"
                              data-guests="${guestsJson}"
                              data-visibility="${evt.visibility}"
+                             data-teamid="${evt.teamId || ''}"
                              data-teamname="${evt.teamName || ''}"
                              data-owneremail="${evt.ownerEmail || ''}"
                              draggable="true" 
@@ -1023,7 +1024,7 @@ $(document).ready(function () {
             RecurringRule: 0,
             GuestEmails: guestEmails,
             Notification: selectedNotification,
-            TeamId: $('#team-dropdown').val() || null
+            TeamId: (parseInt($('#popover-visibility').val()) === 1) ? $('#team-dropdown').val() : null
         };
 
         $('#btn-save-event').prop('disabled', true).text('Đang lưu...');
@@ -1343,6 +1344,16 @@ $(document).on('click', '#btn-more-options', function (e) {
     $('#fs-notification').val($('#notification-list select').first().val() || "30 minutes before");
     $('#fs-visibility').val($('#popover-visibility').val());
 
+    // Chuyển TeamId sang Full Screen
+    if ($('#popover-visibility').val() === "1") {
+        let teamId = $('#team-dropdown').val();
+        let teamHtml = $('#team-dropdown').html();
+        $('#fs-team-dropdown').html(teamHtml).val(teamId);
+        $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+    } else {
+        $('#fs-team-selection-row').addClass('d-none').removeClass('d-flex');
+    }
+
     setupFsColorDropdown($('#popover-color-select').val());
 
     fsGuestEmails = [...guestEmails]; // Copy array guest
@@ -1380,6 +1391,28 @@ $(document).on('click', '#btn-edit-event', function (e) {
     fsGuestEmails = JSON.parse(decodeURIComponent(guestsRaw || '%5B%5D'));
     renderFsGuests();
 
+    // Xử lý Team khi Edit
+    let visibility = $block.attr('data-visibility');
+    $('#fs-visibility').val(visibility);
+    if (visibility === "1") {
+        let teamId = $block.attr('data-teamid') || $block.data('teamid'); 
+        // Lưu ý: data-teamid có thể chưa được nhét vào blockHtml ở hàm loadAppointments.
+        // Tôi sẽ bổ sung nó vào blockHtml sau.
+        
+        $.get('/api/Appointment/get-user-teams', function (teams) {
+            let html = '<option value="">-- Select Team --</option>';
+            if (teams && teams.length > 0) {
+                teams.forEach(team => {
+                    html += `<option value="${team.id}">${team.name}</option>`;
+                });
+            }
+            $('#fs-team-dropdown').html(html).val(teamId);
+            $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+        });
+    } else {
+        $('#fs-team-selection-row').addClass('d-none');
+    }
+
     // Ẩn Popover detail và mở modal
     $('#event-detail-popover').hide();
     $('.calendar-body-scroll').css('overflow', 'auto');
@@ -1410,6 +1443,7 @@ $('#btn-save-fs-event').on('click', function () {
         Visibility: parseInt($('#fs-visibility').val() || "0"),
         Notification: $('#fs-notification').val(),
         GuestEmails: fsGuestEmails,
+        TeamId: (parseInt($('#fs-visibility').val()) === 1) ? $('#fs-team-dropdown').val() : null
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
     };
 
@@ -1438,4 +1472,30 @@ $('#btn-save-fs-event').on('click', function () {
             $(this).prop('disabled', false).text('Save');
         }
     });
+});
+
+// Thêm listener cho fs-visibility
+$(document).on('change', '#fs-visibility', function () {
+    const visibility = $(this).val();
+    const $row = $('#fs-team-selection-row');
+    const $dropdown = $('#fs-team-dropdown');
+
+    if (visibility === "1") {
+        $.get('/api/Appointment/get-user-teams', function (teams) {
+            if (teams && teams.length > 0) {
+                let html = '<option value="">-- Select Team --</option>';
+                teams.forEach(team => {
+                    html += `<option value="${team.id}">${team.name}</option>`;
+                });
+                $dropdown.html(html);
+                $row.removeClass('d-none').addClass('d-flex');
+            } else {
+                $dropdown.html('<option value="">No teams found</option>');
+                $row.removeClass('d-none').addClass('d-flex');
+            }
+        });
+    } else {
+        $row.addClass('d-none').removeClass('d-flex');
+        $dropdown.empty().append('<option value="">-- Select Team --</option>');
+    }
 });

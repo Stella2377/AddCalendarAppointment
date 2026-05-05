@@ -70,6 +70,7 @@ namespace AddCalendarAppointment.Controllers
                 guests = a.Guests != null ? a.Guests.Select(g => g.User.Email).ToList() : new List<string>(),
                 visibility = (int)a.Visibility,
                 teamName = a.Team?.Name,
+                teamId = a.TeamId,
                 ownerEmail = a.Owner?.Email
             });
 
