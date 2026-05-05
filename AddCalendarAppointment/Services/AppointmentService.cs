@@ -46,19 +46,36 @@ namespace AddCalendarAppointment.Services
 
         public async Task<List<Appointment>> SearchAppointmentsAsync(Guid userId, SearchRequest req)
         {
-            var query = _context.Appointments.Where(a => a.OwnerId == userId && !a.IsDeleted);
+            // Lấy tất cả sự kiện của user này
+            var query = _context.Appointments.Where(a => a.OwnerId == userId);
 
+            // 1. Lọc theo Keyword (Tìm trong Title hoặc Description)
             if (!string.IsNullOrEmpty(req.Keyword))
-                query = query.Where(a => a.Title.Contains(req.Keyword) || a.Description.Contains(req.Keyword));
+            {
+                var kw = req.Keyword.ToLower();
+                query = query.Where(a => a.Title.ToLower().Contains(kw) ||
+                                        (a.Description != null && a.Description.ToLower().Contains(kw)));
+            }
 
+            // 2. Lọc theo Location
             if (!string.IsNullOrEmpty(req.Location))
-                query = query.Where(a => a.Location.Contains(req.Location));
+            {
+                var loc = req.Location.ToLower();
+                query = query.Where(a => a.Location != null && a.Location.ToLower().Contains(loc));
+            }
 
-            if (!string.IsNullOrEmpty(req.FromDate))
-                query = query.Where(a => a.StartTime >= DateTime.Parse(req.FromDate));
+            // 3. Lọc Từ ngày
+            if (!string.IsNullOrEmpty(req.FromDate) && DateTime.TryParse(req.FromDate, out DateTime from))
+            {
+                query = query.Where(a => a.StartTime >= from);
+            }
 
-            if (!string.IsNullOrEmpty(req.ToDate))
-                query = query.Where(a => a.EndTime <= DateTime.Parse(req.ToDate));
+            // 4. Lọc Đến ngày
+            if (!string.IsNullOrEmpty(req.ToDate) && DateTime.TryParse(req.ToDate, out DateTime to))
+            {
+                to = to.Date.AddDays(1).AddTicks(-1); // Lấy đến 23:59:59 của ngày kết thúc
+                query = query.Where(a => a.EndTime <= to);
+            }
 
             return await query.ToListAsync();
         }

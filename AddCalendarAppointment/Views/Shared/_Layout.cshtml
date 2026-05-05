@@ -54,11 +54,55 @@
 				<h4 class="m-0 fs-5" id="main-month-title"></h4>
 			</div>
 
-			<div class="header-search">
+		<div class="search-wrapper">
+			<!-- Thanh search chính -->
+			<div class="main-search-bar">
 				<i class="fa-solid fa-magnifying-glass search-icon"></i>
-				<input type="text" placeholder="Search for events..." id="searchInput" />
-				<div class="spinner-border spinner-border-sm text-primary search-loading" role="status" id="searchSpinner" style="display:none;"></div>
+				<input type="text" id="main-search-input" placeholder="Search" autocomplete="off">
+				<button type="button" id="btn-toggle-advanced" class="dropdown-icon">
+					<i class="fa-solid fa-caret-down"></i>
+				</button>
 			</div>
+
+			<!-- Bảng lọc nâng cao (Mặc định ẩn) -->
+			<div id="advanced-search-panel" class="advanced-filter-card">
+				<!-- What -->
+				<div class="filter-row">
+					<div class="filter-label">What</div>
+					<input type="text" id="filter-what" class="filter-input" placeholder="Keywords contained in event">
+				</div>
+				<!-- Who -->
+				<div class="filter-row">
+					<div class="filter-label">Who</div>
+					<input type="text" id="filter-who" class="filter-input" placeholder="Enter a participant, organizer, or creator">
+				</div>
+				<!-- Where -->
+				<div class="filter-row">
+					<div class="filter-label">Where</div>
+					<input type="text" id="filter-where" class="filter-input" placeholder="Enter a location or room">
+				</div>
+				<!-- Doesn't have -->
+				<div class="filter-row">
+					<div class="filter-label">Doesn't have</div>
+					<input type="text" id="filter-exclude" class="filter-input" placeholder="Keywords not contained in event">
+				</div>
+				<!-- Date -->
+				<div class="filter-row">
+					<div class="filter-label">Date</div>
+					<div class="date-group">
+						<input type="date" id="filter-date-from" class="filter-input">
+						<span>to</span>
+						<input type="date" id="filter-date-to" class="filter-input">
+					</div>
+				</div>
+
+				<!-- Footer Buttons -->
+				<div class="filter-actions">
+					<button type="button" id="btn-reset-search" class="btn-search-reset">Reset</button>
+					<button type="button" id="btn-execute-search" class="btn-search-submit">Search</button>
+				</div>
+			</div>
+		</div>
 
         <div class="header-actions">
             <i class="fa-regular fa-circle-question fs-5 text-secondary mx-2"></i>
@@ -172,25 +216,6 @@
 
 		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-		<script>
-			
-
-			// Xử lý Loading cho Search bar
-			document.getElementById('searchInput').addEventListener('input', function() {
-			const spinner = document.getElementById('searchSpinner');
-			spinner.style.display = 'block';
-			clearTimeout(this.timer);
-			this.timer = setTimeout(() => { spinner.style.display = 'none'; }, 800);
-			});
-
-			// Xử lý đổi View
-			document.getElementById('viewSelector').addEventListener('change', function(e) {
-			let days = parseInt(e.target.value);
-			if(days <= 7) {
-			document.documentElement.style.setProperty('--col-count', days);
-			}
-			});
-		</script>
 
     <!-- Thêm dòng này để nhúng file calendar.js -->
     <script src="~/js/calendar.js" asp-append-version="true"></script>

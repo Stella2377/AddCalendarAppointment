@@ -246,7 +246,8 @@
                         if (data.success) {
                             // Tắt alert mặc định cho đỡ phiền, load lại danh sách popup luôn cho mượt
                             // Mẹo: Gọi lại hàm showTeamDetails để nó vẽ lại danh sách thành viên mới (đã mất người bị xóa)
-                            showTeamDetails(teamId);
+                            alert(data.message);
+                            location.reload();
                         } else {
                             alert(data.message);
                         }

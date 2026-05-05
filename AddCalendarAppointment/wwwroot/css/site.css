@@ -16,34 +16,170 @@ body {
     flex-direction: column;
     overflow: hidden;
 }
+
+/* --- SEARCH BAR --- */
 .search-wrapper {
     position: relative;
-    width: 500px;
+    flex-grow: 1;
+    max-width: 720px;
+    margin: 0 20px;
 }
 
-.search-container {
+.main-search-bar {
     display: flex;
     align-items: center;
-    background: #f1f3f4;
+    background-color: #f1f3f4; /* Màu xám đặc trưng của Google */
     border-radius: 8px;
-    padding: 2px 8px;
+    padding: 8px 16px;
+    transition: background-color 0.2s, box-shadow 0.2s;
 }
 
-#main-search-input {
-    border: none;
-    background: transparent;
+    .main-search-bar:focus-within {
+        background-color: #fff;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+    }
+
+    .main-search-bar input {
+        border: none;
+        background: transparent;
+        flex-grow: 1;
+        padding: 0 12px;
+        outline: none;
+        font-size: 16px;
+        color: #202124;
+    }
+
+    .main-search-bar .search-icon {
+        color: #5f6368;
+        font-size: 16px;
+    }
+
+    .main-search-bar .dropdown-icon {
+        color: #5f6368;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+    }
+
+        .main-search-bar .dropdown-icon:hover {
+            background-color: #e8eaed;
+        }
+
+/* --- ADVANCED SEARCH PANEL --- */
+.advanced-filter-card {
+    display: none; /* Ẩn mặc định */
+    position: absolute;
+    top: 55px; /* Canh khoảng cách từ thanh search xuống */
+    left: 0;
     width: 100%;
-    padding: 8px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid #dadce0;
+    z-index: 2000;
+    padding: 24px;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.filter-label {
+    width: 120px;
+    font-size: 14px;
+    color: #3c4043;
+    font-weight: 500;
+}
+
+.filter-input {
+    flex-grow: 1;
+    background-color: #f1f3f4;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #202124;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+    .filter-input:focus {
+        background-color: #fff;
+        border-color: #1a73e8;
+        outline: none;
+    }
+
+.filter-select {
+    background-color: #f1f3f4;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #202124;
+    width: auto;
+    min-width: 200px;
     outline: none;
 }
 
-#advanced-search-panel {
-    position: absolute;
-    top: 50px;
-    left: 0;
-    width: 100%;
-    z-index: 2000; /* Cao hơn lưới lịch */
+    .filter-select:focus {
+        background-color: #fff;
+        border-color: #1a73e8;
+    }
+
+.date-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
+
+    .date-group span {
+        color: #5f6368;
+        font-size: 14px;
+    }
+
+/* --- BUTTONS --- */
+.filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-search-reset {
+    background: none;
+    border: none;
+    color: #1a73e8;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+    .btn-search-reset:hover {
+        background-color: #f6fafe;
+    }
+
+.btn-search-submit {
+    background-color: #1a73e8;
+    color: #fff;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 24px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+    .btn-search-submit:hover {
+        background-color: #1b66c9;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+    }
 
 /* --- HEADER --- */
 .app-header {
@@ -83,41 +219,7 @@ body {
         color: #3c4043;
     }
 
-.header-search {
-    position: relative;
-    margin: 0 20px;
-    flex-grow: 1;
-    max-width: 600px;
-}
 
-    .header-search input {
-        width: 100%;
-        padding: 10px 40px;
-        border-radius: 8px;
-        border: 1px solid transparent;
-        background: #f1f3f4;
-    }
-
-        .header-search input:focus {
-            background: white;
-            border-color: var(--border-color);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            outline: none;
-        }
-
-.search-icon {
-    position: absolute;
-    left: 12px;
-    top: 12px;
-    color: #5f6368;
-}
-
-.search-loading {
-    position: absolute;
-    right: 12px;
-    top: 10px;
-    display: none;
-}
 /* Hiện khi đang search */
 
 .header-actions {
