@@ -1,13 +1,7 @@
-﻿$(document).ready(function () {
-    // --- KHỞI TẠO BIẾN TOÀN CỤC ---
-    let currDate = new Date(); 
-    let currentViewMode = 7; // Mặc định là 7 ngày (Week)
+﻿let currDate = new Date();
+let currentViewMode = 7; // Mặc định là 7 ngày (Week)
 $(document).ready(function () {
     syncAllCalendars();
-
-    renderDynamicMiniCalendar(currDate);
-    updateMainMonthTitle(currDate);
-    loadAppointments();
 
     // ==========================================
     // SỰ KIỆN ĐIỀU HƯỚNG
@@ -68,10 +62,6 @@ $(document).ready(function () {
     function syncAllCalendars() {
         renderDynamicMiniCalendar(currDate);
         updateMainMonthTitle(currDate);
-        updateMainCalendarGrid(currDate);
-        if (typeof loadAppointments === "function") {
-            loadAppointments(); 
-        }
         renderMainCalendar(); // Vẽ lại lưới lịch chính
     }
 
@@ -97,14 +87,14 @@ function renderMainCalendar() {
     if (viewMode === 7) {
         // Nếu là tuần, đưa về ngày Thứ 2 (hoặc Chủ nhật tùy bạn, ở đây là Thứ 2)
         let day = startDate.getDay();
-        let diff = startDate.getDate() - day + (day === 0 ? -6 : 1); 
+        let diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
         startDate.setDate(diff);
     }
 
     for (let i = 0; i < viewMode; i++) {
         let d = new Date(startDate);
         d.setDate(startDate.getDate() + i);
-        
+
         let dateStr = d.toISOString().split('T')[0];
         let isToday = new Date().toDateString() === d.toDateString();
         let activeClass = isToday ? 'active' : '';
@@ -140,7 +130,7 @@ function renderDynamicMiniCalendar(date) {
     const month = date.getMonth();
 
     const today = new Date();
-    
+
     const monthName = date.toLocaleString('default', { month: 'long' });
     $miniTitle.text(`${monthName} ${year}`);
 
@@ -189,9 +179,6 @@ function renderDynamicMiniCalendar(date) {
                     document.documentElement.style.setProperty('--col-count', view);
                     renderDynamicMiniCalendar(currDate);
                     updateMainMonthTitle(currDate);
-                    if (typeof loadAppointments === "function") {
-                        loadAppointments();
-                    }
                     renderMainCalendar();
                 });
             }
@@ -210,7 +197,6 @@ function loadAppointments() {
         url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
-            // Xóa hết các event trên giao diện trước khi render cái mới
             $('.appointment-block').remove();
 
             data.forEach(function (evt) {
@@ -218,26 +204,17 @@ function loadAppointments() {
                 let startDate = new Date(evt.start);
                 let endDate = new Date(evt.end);
 
-    // Ngày tháng sau
-    const remaining = 42 - days.length;
-    for (let j = 1; j <= remaining; j++) {
-        days.push({ day: j, status: 'text-muted' });
-    }
-
-                // Tính toán vị trí Y (top) trên lưới (1 giờ = 60px, 1 phút = 1px)
                 let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
-                let durationMins = (endDate - startDate) / (1000 * 60); 
+                let durationMins = (endDate - startDate) / (1000 * 60);
                 let heightPx = durationMins > 0 ? durationMins : 60;
 
                 let $column = $(`.day-col[data-date='${dateStr}']`);
 
-                console.log(`Tìm cột ngày ${dateStr}:`, $column.length > 0 ? "Thành công" : "Thất bại");
-
                 if ($column.length > 0) {
-                    let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + 
-                                     " - " + 
-                                     endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                    
+                    let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                        " - " +
+                        endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
                     let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
 
                     let blockHtml = `
@@ -269,3 +246,5 @@ function updateMainMonthTitle(date) {
         $mainTitle.text(monthStr);
     }
 }
+
+// Các hàm Edit/Duplicate giữ nguyên logic của bạn...
