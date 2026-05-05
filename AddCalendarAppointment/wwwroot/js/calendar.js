@@ -221,7 +221,7 @@ function loadAppointments() {
                         <div class="appointment-block p-1 text-white rounded shadow-sm" 
                              data-id="${evt.id}" 
                              draggable="true" 
-                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; cursor: grab; background-color: #3f51b5; overflow: hidden;">
+                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; cursor: grab; background-color: #3f51b5; overflow: hidden; user-select: none;">
                             <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title}</div>
                             <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
                                 ${timeString}
@@ -247,6 +247,95 @@ function updateMainMonthTitle(date) {
     }
 }
 
+// ==========================================
+// LOGIC DI CHUYỂN CUỘC HẸN (MOVE DRAG & DROP)
+// ==========================================
+
+let draggedEventId = null;
+let eventDurationMins = 0;
+
+// 1. Khi bắt đầu kéo một cuộc hẹn cũ
+$(document).on('dragstart', '.appointment-block', function (e) {
+    draggedEventId = $(this).data('id');
+
+    // Tính toán thời lượng gốc của cuộc hẹn (để khi thả xuống giữ nguyên độ dài)
+    let height = $(this).height();
+    eventDurationMins = height; // Vì 1px = 1 phút trong logic của bạn
+
+    $(this).addClass('opacity-50'); // Làm mờ khi đang kéo
+    e.originalEvent.dataTransfer.setData("text/plain", draggedEventId);
+});
+
+$(document).on('dragend', '.appointment-block', function () {
+    $(this).removeClass('opacity-50');
+});
+
+// 2. Cho phép thả vào các cột ngày
+$(document).on('dragover', '.day-col', function (e) {
+    e.preventDefault(); // Bắt buộc phải có để cho phép thả
+    $(this).css('background-color', 'rgba(0,0,0,0.05)');
+});
+
+$(document).on('dragleave', '.day-col', function (e) {
+    $(this).css('background-color', 'transparent');
+});
+
+// 3. Xử lý khi thả cuộc hẹn xuống vị trí mới
+$(document).on('drop', '.day-col', function (e) {
+    e.preventDefault();
+    $(this).css('background-color', 'transparent');
+
+    if (!draggedEventId) return;
+
+    let $col = $(this);
+    let newDateStr = $col.data('date');
+
+    // Tính toán tọa độ Y để ra giờ/phút mới
+    let offset = $col.offset();
+    let relativeY = e.originalEvent.pageY - offset.top;
+
+    // Giới hạn trong khoảng 0 - 1440px (24h)
+    let startTotalMins = Math.max(0, Math.min(1440, relativeY));
+    let endTotalMins = startTotalMins + eventDurationMins;
+
+    let startHour = Math.floor(startTotalMins / 60);
+    let startMin = Math.floor(startTotalMins % 60);
+    let endHour = Math.floor(endTotalMins / 60);
+    let endMin = Math.floor(endTotalMins % 60);
+
+    // Tạo chuỗi thời gian gửi lên Server
+    let startTime = `${newDateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`;
+    let endTime = `${newDateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
+
+    // Gọi AJAX cập nhật Database
+    updateAppointmentMove(draggedEventId, startTime, endTime);
+
+    draggedEventId = null; // Reset
+});
+
+// Hàm gọi API cập nhật thời gian
+function updateAppointmentMove(id, startTime, endTime) {
+    $.ajax({
+        url: '/api/Appointment/update-time', // Bạn cần tạo thêm Action này ở Controller
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            Id: id,
+            StartTime: startTime,
+            EndTime: endTime
+        }),
+        success: function (res) {
+            if (res.success) {
+                loadAppointments(); // Vẽ lại các cuộc hẹn sau khi cập nhật thành công
+            } else {
+                alert("Không thể cập nhật: " + res.message);
+            }
+        },
+        error: function () {
+            alert("Lỗi kết nối server!");
+        }
+    });
+}
 
 // ==========================================
 // KÉO THẢ VÀ HIỂN THỊ POPOVER TẠO CUỘC HẸN
