@@ -44,21 +44,30 @@ namespace AddCalendarAppointment.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTeamDetails(Guid teamId)
         {
+            var userIdStr = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
+            Guid currentUserId = Guid.Parse(userIdStr);
+
             var team = await _context.Teams
                 .Include(t => t.Members)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
 
             if (team == null) return NotFound();
 
-            // Lấy danh sách thành viên và xác định vai trò
             var membersList = team.Members.Select(m => new {
-                m.Id,
-                m.Username,
-                m.Email,
-                Role = (m.Id == team.OwnerId) ? "Trưởng nhóm" : "Thành viên"
-            }).OrderBy(m => m.Role == "Trưởng nhóm" ? 0 : 1).ToList();
+                id = m.Id,
+                username = m.Username,
+                email = m.Email,
+                role = (m.Id == team.OwnerId) ? "Trưởng nhóm" : "Thành viên"
+            }).OrderBy(m => m.role == "Trưởng nhóm" ? 0 : 1).ToList();
 
-            return Json(new { teamName = team.Name, members = membersList });
+            return Json(new
+            {
+                teamName = team.Name,
+                currentUserId = currentUserId, // Truyền ID người đang đăng nhập
+                ownerId = team.OwnerId,        // Truyền ID trưởng nhóm
+                members = membersList
+            });
         }
 
         // 2. Logic tạo nhóm mới
@@ -217,6 +226,34 @@ namespace AddCalendarAppointment.Controllers
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
+        }
+
+        // 6. Logic Xóa thành viên (Chỉ trưởng nhóm mới được dùng)
+        [HttpPost]
+        public async Task<IActionResult> RemoveMember(Guid teamId, Guid memberId)
+        {
+            var currentUserId = Guid.Parse(HttpContext.Session.GetString("UserId"));
+
+            var team = await _context.Teams.Include(t => t.Members).FirstOrDefaultAsync(t => t.Id == teamId);
+            if (team == null) return Json(new { success = false, message = "Không tìm thấy nhóm." });
+
+            // KIỂM TRA QUYỀN: Ai không phải trưởng nhóm thì từ chối
+            if (team.OwnerId != currentUserId)
+                return Json(new { success = false, message = "Chỉ trưởng nhóm mới có quyền xóa thành viên." });
+
+            // Trưởng nhóm không thể tự xóa chính mình bằng nút này
+            if (memberId == team.OwnerId)
+                return Json(new { success = false, message = "Không thể xóa trưởng nhóm." });
+
+            var memberToRemove = team.Members.FirstOrDefault(m => m.Id == memberId);
+            if (memberToRemove != null)
+            {
+                team.Members.Remove(memberToRemove);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = "Đã xóa thành viên khỏi nhóm." });
+            }
+
+            return Json(new { success = false, message = "Không tìm thấy thành viên này trong nhóm." });
         }
     }
 }

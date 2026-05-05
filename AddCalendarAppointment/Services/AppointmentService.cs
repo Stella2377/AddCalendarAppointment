@@ -1,12 +1,13 @@
-﻿using System;
+﻿using AddCalendarAppointment.Data;
+using AddCalendarAppointment.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AddCalendarAppointment.Data;
-using AddCalendarAppointment.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
+using static AddCalendarAppointment.Controllers.AppointmentController;
 
 namespace AddCalendarAppointment.Services
 {
@@ -41,6 +42,25 @@ namespace AddCalendarAppointment.Services
             // Nếu trong Service bạn đặt tên khác (ví dụ _db), hãy đổi tên cho khớp
             _context.Appointments.Update(appointment);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<Appointment>> SearchAppointmentsAsync(Guid userId, SearchRequest req)
+        {
+            var query = _context.Appointments.Where(a => a.OwnerId == userId && !a.IsDeleted);
+
+            if (!string.IsNullOrEmpty(req.Keyword))
+                query = query.Where(a => a.Title.Contains(req.Keyword) || a.Description.Contains(req.Keyword));
+
+            if (!string.IsNullOrEmpty(req.Location))
+                query = query.Where(a => a.Location.Contains(req.Location));
+
+            if (!string.IsNullOrEmpty(req.FromDate))
+                query = query.Where(a => a.StartTime >= DateTime.Parse(req.FromDate));
+
+            if (!string.IsNullOrEmpty(req.ToDate))
+                query = query.Where(a => a.EndTime <= DateTime.Parse(req.ToDate));
+
+            return await query.ToListAsync();
         }
 
         public async Task<TimeSpan> GetUserDefaultDurationAsync(Guid userId)

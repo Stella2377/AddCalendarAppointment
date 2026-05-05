@@ -193,35 +193,66 @@
     <script>
         // 1. Xử lý khi bấm nút "Chi tiết"
         function showTeamDetails(teamId) {
-            // Gọi API Backend lấy dữ liệu
             fetch(`/Team/GetTeamDetails?teamId=${teamId}`)
                 .then(response => response.json())
                 .then(data => {
-                    // Cập nhật tên nhóm lên pop-up
                     document.getElementById('detailTeamName').innerText = data.teamName;
 
-                    // Tạo danh sách HTML thành viên
                     const memberList = document.getElementById('memberList');
-                    memberList.innerHTML = ''; // Xóa dữ liệu cũ
+                    memberList.innerHTML = '';
+
+                    // Biến kiểm tra xem người đang đăng nhập CÓ PHẢI LÀ TRƯỞNG NHÓM không
+                    const isCurrentUserOwner = (data.currentUserId === data.ownerId);
 
                     data.members.forEach(member => {
-                        // Trưởng nhóm hiển thị màu chữ đậm/khác biệt một chút
                         let roleBadge = member.role === "Trưởng nhóm"
                             ? '<span class="badge bg-primary">Trưởng nhóm</span>'
                             : '<span class="badge bg-secondary">Thành viên</span>';
 
+                        let deleteBtn = '';
+                        // ĐIỀU KIỆN VẼ THÙNG RÁC:
+                        // - Bạn phải là trưởng nhóm (isCurrentUserOwner)
+                        // - Và người bị xóa KHÔNG PHẢI là trưởng nhóm (member.id !== data.ownerId)
+                        if (isCurrentUserOwner && member.id !== data.ownerId) {
+                            deleteBtn = `<i class="fa-solid fa-trash-can text-danger ms-3" style="cursor:pointer;"
+                                                    title="Xóa thành viên" onclick="removeMember('${teamId}', '${member.id}')"></i>`;
+                        }
+
+                        // Gói cái badge và nút xóa vào 1 div cho nó thẳng hàng bên phải
                         memberList.innerHTML += `
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        ${member.username} (${member.email})
-                                        ${roleBadge}
+                                        <span>${member.username} (${member.email})</span>
+                                        <div class="d-flex align-items-center">
+                                            ${roleBadge}
+                                            ${deleteBtn}
+                                        </div>
                                     </li>`;
                     });
 
-                    // Hiển thị Modal (Cần có Bootstrap JS)
                     var detailsModal = new bootstrap.Modal(document.getElementById('teamDetailsModal'));
                     detailsModal.show();
                 })
                 .catch(error => console.error('Lỗi:', error));
+        }
+
+        // Xử lý khi bấm vào icon thùng rác
+        function removeMember(teamId, memberId) {
+            if (confirm('Bạn có chắc chắn muốn xóa người này khỏi nhóm không?')) {
+                fetch(`/Team/RemoveMember?teamId=${teamId}&memberId=${memberId}`, {
+                    method: 'POST'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Tắt alert mặc định cho đỡ phiền, load lại danh sách popup luôn cho mượt
+                            // Mẹo: Gọi lại hàm showTeamDetails để nó vẽ lại danh sách thành viên mới (đã mất người bị xóa)
+                            showTeamDetails(teamId);
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => console.error('Lỗi:', error));
+            }
         }
 
         // 2. Xử lý khi bấm nút "Rời nhóm" (Trong dấu 3 chấm)

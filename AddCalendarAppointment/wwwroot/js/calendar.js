@@ -473,3 +473,126 @@ function toLocalISOString(date) {
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' +
         pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
 }
+
+// ==========================================
+// TÌM KIẾM SỰ KIỆN (SEARCH & FILTER)
+// ==========================================
+$(document).ready(function () {
+    // 1. Ẩn/Hiện panel tìm kiếm nâng cao khi click icon Dropdown
+    $(document).on('click', '#toggle-advanced-filter', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#advanced-search-panel').toggle();
+    });
+
+    // 2. Đóng panel khi click ra ngoài vùng search
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.search-wrapper').length) {
+            $('#advanced-search-panel').hide();
+        }
+    });
+
+    // 3. Xử lý nút Đặt lại (Reset)
+    $(document).on('click', '#btn-reset-search', function (e) {
+        e.preventDefault();
+        $('#advanced-search-panel input').val('');
+        $('#main-search-input').val('');
+        loadAppointments(); // Tải lại toàn bộ lịch ban đầu
+    });
+
+    // 4. Bắt sự kiện Enter ở ô tìm kiếm chính
+    $(document).on('keypress', '#main-search-input', function (e) {
+        if (e.which === 13) { // Phím Enter
+            executeSearch();
+        }
+    });
+
+    // 5. Nếu xóa rỗng ô search chính thì load lại lịch gốc
+    $(document).on('input', '#main-search-input', function () {
+        if ($(this).val().trim() === '') {
+            $('#filter-keyword').val('');
+            loadAppointments();
+        } else {
+            // Đồng bộ dữ liệu xuống ô keyword của bộ lọc nâng cao
+            $('#filter-keyword').val($(this).val());
+        }
+    });
+
+    // 6. Nút Tìm kiếm (Search) trong panel nâng cao
+    $(document).on('click', '#btn-execute-search', function (e) {
+        e.preventDefault();
+        executeSearch();
+        $('#advanced-search-panel').hide();
+    });
+
+    // Hàm gọi AJAX tìm kiếm
+    function executeSearch() {
+        const searchParams = {
+            Keyword: $('#filter-keyword').val() || $('#main-search-input').val(),
+            Location: $('#filter-location').val(),
+            FromDate: $('#filter-from').val(),
+            ToDate: $('#filter-to').val()
+        };
+
+        // Nút search đang loading...
+        $('#btn-execute-search').text('Đang tìm...');
+
+        $.ajax({
+            url: '/api/Appointment/Search', // Đảm bảo API này đã được tạo ở Controller
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(searchParams),
+            success: function (data) {
+                renderSearchResults(data); // Vẽ lại lịch bằng kết quả mới
+            },
+            error: function (err) {
+                console.error("Lỗi khi tìm kiếm:", err);
+                alert("Đã xảy ra lỗi khi tìm kiếm!");
+            },
+            complete: function () {
+                $('#btn-execute-search').text('Tìm kiếm');
+            }
+        });
+    }
+
+    // Hàm vẽ kết quả tìm kiếm (tái sử dụng logic vẽ của loadAppointments)
+    function renderSearchResults(data) {
+        // Xóa sạch các cục sự kiện cũ trên lịch
+        $('.appointment-block').remove();
+
+        // Duyệt qua data trả về và vẽ lại y hệt hàm loadAppointments
+        data.forEach(function (evt) {
+            let dateStr = evt.start.split('T')[0];
+            let startDate = new Date(evt.start);
+            let endDate = new Date(evt.end);
+
+            let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
+            let durationMins = (endDate - startDate) / (1000 * 60);
+            let heightPx = durationMins > 0 ? durationMins : 60;
+
+            let $column = $(`.day-col[data-date='${dateStr}']`);
+
+            if ($column.length > 0) {
+                let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                    " - " +
+                    endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+
+                let blockHtml = `
+                    <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                         data-id="${evt.id}" 
+                         draggable="true" 
+                         style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; z-index: 10; cursor: grab; background-color: #3f51b5; overflow: hidden;">
+                        <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title}</div>
+                        <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                            ${timeString}
+                            ${locString}
+                        </div>
+                    </div>
+                `;
+                $column.append(blockHtml);
+            }
+        });
+    }
+});

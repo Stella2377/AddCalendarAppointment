@@ -11,6 +11,56 @@
     }
 </style>
 
+<!-- Container bao quanh toàn bộ thanh search -->
+<div class="search-wrapper">
+    <div class="search-bar-container">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text" id="main-search-input" placeholder="Search for events..." autocomplete="off">
+        <button type="button" id="toggle-filter-btn" class="filter-toggle">
+            <i class="bi bi-caret-down-fill"></i>
+        </button>
+    </div>
+
+    <!-- Panel bộ lọc nâng cao (Mặc định ẩn) -->
+    <div id="advanced-search-panel" class="advanced-panel shadow">
+        <div class="filter-row">
+            <label>Search in</label>
+            <select id="filter-calendar-type">
+                <option value="active">Active calendars</option>
+                <option value="all">All calendars</option>
+            </select>
+        </div>
+        <div class="filter-row">
+            <label>What</label>
+            <input type="text" id="filter-what" placeholder="Keywords contained in event">
+        </div>
+        <div class="filter-row">
+            <label>Who</label>
+            <input type="text" id="filter-who" placeholder="Enter a participant...">
+        </div>
+        <div class="filter-row">
+            <label>Where</label>
+            <input type="text" id="filter-where" placeholder="Enter a location...">
+        </div>
+        <div class="filter-row">
+            <label>Doesn't have</label>
+            <input type="text" id="filter-exclude" placeholder="Keywords not contained">
+        </div>
+        <div class="filter-row">
+            <label>Date</label>
+            <div class="date-range">
+                <input type="date" id="filter-date-from">
+                <span>to</span>
+                <input type="date" id="filter-date-to">
+            </div>
+        </div>
+        <div class="filter-footer">
+            <button type="button" id="btn-reset-filter" class="btn-link">Reset</button>
+            <button type="button" id="btn-submit-search" class="btn-search-blue">Search</button>
+        </div>
+    </div>
+</div>
+
 <!-- HEADER LỊCH (Thứ, Ngày) -->
 <div class="calendar-header-grid" id="main-header-grid">
     <div class="time-header" style="font-size: 10px; color: #70757a; text-align: left; padding-left: 8px; margin-top: auto;">GMT+07</div>
@@ -125,3 +175,4 @@
         <button id="btn-save-event" class="btn btn-primary px-4 rounded-pill">Save</button>
     </div>
 </div>
+

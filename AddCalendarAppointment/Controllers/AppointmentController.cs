@@ -147,5 +147,30 @@ namespace AddCalendarAppointment.Controllers
             public string StartTime { get; set; }
             public string EndTime { get; set; }
         }
+
+        [HttpPost("search")]
+        public async Task<IActionResult> Search([FromBody] SearchRequest req)
+        {
+            var userId = GetCurrentUserId();
+            // Gọi Service xử lý logic lọc
+            var results = await _appointmentService.SearchAppointmentsAsync(userId, req);
+
+            // Trả về dữ liệu format giống GetAppointments để JS dễ xử lý
+            return Ok(results.Select(a => new {
+                id = a.Id,
+                title = a.Title,
+                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                location = a.Location
+            }));
+        }
+
+        public class SearchRequest
+        {
+            public string Keyword { get; set; }
+            public string Location { get; set; }
+            public string FromDate { get; set; }
+            public string ToDate { get; set; }
+        }
     }
 }
