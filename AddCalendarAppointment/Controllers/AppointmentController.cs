@@ -208,29 +208,43 @@ namespace AddCalendarAppointment.Controllers
             public string EndTime { get; set; }
         }
 
-        [HttpPost("search")]
+        [HttpPost("Search")]
         public async Task<IActionResult> Search([FromBody] SearchRequest req)
         {
-            var userId = GetCurrentUserId();
-            // Gọi Service xử lý logic lọc
-            var results = await _appointmentService.SearchAppointmentsAsync(userId, req);
+            try
+            {
+                var userId = GetCurrentUserId();
 
-            // Trả về dữ liệu format giống GetAppointments để JS dễ xử lý
-            return Ok(results.Select(a => new {
-                id = a.Id,
-                title = a.Title,
-                start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                location = a.Location
-            }));
+                // Gọi hàm lọc từ Service
+                var results = await _appointmentService.SearchAppointmentsAsync(userId, req);
+
+                // Map kết quả trả về giống hệt như hàm GetAppointments
+                var calendarEvents = results.Select(a => new {
+                    id = a.Id,
+                    title = a.Title,
+                    location = a.Location,
+                    start = a.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    end = a.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    color = a.ColorCategory ?? "#039be5"
+                });
+
+                return Ok(calendarEvents);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
 
+        // Class dùng để hứng dữ liệu JSON từ AJAX gửi lên
         public class SearchRequest
         {
-            public string Keyword { get; set; }
-            public string Location { get; set; }
-            public string FromDate { get; set; }
-            public string ToDate { get; set; }
+            public string? Keyword { get; set; }
+            public string? Who { get; set; }
+            public string? Location { get; set; }
+            public string? Exclude { get; set; }
+            public string? FromDate { get; set; }
+            public string? ToDate { get; set; }
         }
     }
 

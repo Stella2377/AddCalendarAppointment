@@ -898,7 +898,7 @@ function toLocalISOString(date) {
 // ==========================================
 $(document).ready(function () {
     // 1. Ẩn/Hiện panel tìm kiếm nâng cao khi click icon Dropdown
-    $(document).on('click', '#toggle-advanced-filter', function (e) {
+    $(document).on('click', '#btn-toggle-advanced', function (e) {
         e.preventDefault();
         e.stopPropagation();
         $('#advanced-search-panel').toggle();
@@ -947,10 +947,13 @@ $(document).ready(function () {
     // Hàm gọi AJAX tìm kiếm
     function executeSearch() {
         const searchParams = {
-            Keyword: $('#filter-keyword').val() || $('#main-search-input').val(),
-            Location: $('#filter-location').val(),
-            FromDate: $('#filter-from').val(),
-            ToDate: $('#filter-to').val()
+            // Thêm || "" ở cuối để nếu không có ô đó, nó tự gán bằng rỗng thay vì báo lỗi
+            Keyword: $('#filter-keyword').val() || $('#main-search-input').val() || "",
+            Who: $('#filter-who').val() || "",
+            Location: $('#filter-location').val() || "",
+            Exclude: $('#filter-exclude').val() || "",
+            FromDate: $('#filter-date-from').val() || "",
+            ToDate: $('#filter-date-to').val() || ""
         };
 
         // Nút search đang loading...
