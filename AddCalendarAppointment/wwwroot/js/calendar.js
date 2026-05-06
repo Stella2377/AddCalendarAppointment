@@ -438,17 +438,15 @@ function loadAppointments() {
                             
                             // KIỂM TRA QUYỀN VÀ KHÓA (LOCKED)
                             let isOwner = evt.isCurrentUserOwner;
-                            let hasOtherParticipants = (evt.visibility == 1 && evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                            let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
                             
                             let isLocked = false;
-                            if (evt.visibility == 1) {
-                                if (!isOwner) {
-                                    // Thành viên: Không được làm gì cả trừ Unjoin
-                                    isLocked = true;
-                                } else if (hasOtherParticipants) {
-                                    // Chủ sở hữu: Bị khóa thời gian/nhóm nếu đã có người tham gia
-                                    isLocked = true;
-                                }
+                            if (!isOwner) {
+                                // Nếu không phải chủ sở hữu (là Guest) -> Luôn bị khóa (chỉ được Unjoin)
+                                isLocked = true;
+                            } else if (evt.visibility == 1 && hasOtherParticipants) {
+                                // Nếu là chủ sở hữu Group Meeting và đã có người tham gia -> Khóa thời gian/nhóm
+                                isLocked = true;
                             }
 
                             let draggableAttr = isLocked ? 'false' : 'true';
@@ -1092,8 +1090,8 @@ $(document).ready(function () {
         // --- ẨN/HIỆN NÚT EDIT VÀ TRASH ---
         let guestStatus = parseInt(block.attr('data-gueststatus'));
         
-        // Nếu là Group Meeting và không phải chủ sở hữu -> Không cho sửa bất cứ gì
-        if (visibility === "1" && !isOwner) {
+        // Nếu không phải chủ sở hữu (là Guest) -> Không cho sửa bất cứ gì (cả Private và Group Meeting)
+        if (!isOwner) {
             $('#btn-edit-event').hide();
             if (guestStatus === 0) {
                 $('#btn-delete-event').hide(); // Hide top trash, use Deny instead
@@ -1191,9 +1189,9 @@ $(document).ready(function () {
         let apiUrl = '/api/Appointment/delete/' + id;
         let httpMethod = 'DELETE';
 
-        // Nếu là Group Meeting (1) VÀ không phải Owner -> Đổi sang chế độ Rời khỏi (Unjoin)
-        if (visibility === "1" && !isOwner) {
-            confirmMessage = 'Bạn có chắc muốn rời group meeting này không?';
+        // Nếu không phải chủ sở hữu (là Guest) -> Đổi sang chế độ Rời khỏi (Unjoin) bất kể Private hay Group Meeting
+        if (!isOwner) {
+            confirmMessage = 'Bạn có chắc muốn rời khỏi cuộc hẹn này không?';
             apiUrl = '/api/Appointment/unjoin/' + id;
             httpMethod = 'POST';
         }
