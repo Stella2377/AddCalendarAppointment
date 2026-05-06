@@ -164,7 +164,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="addMemberTeamId" />
-                <input type="email" id="memberEmail" class="form-control" placeholder="Enter member email..." required />
+                <input type="email" id="addMemberEmails" class="form-control" placeholder="Enter member email..." required />
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -249,7 +249,7 @@
             <div class="modal-body">
                 <input type="hidden" id="transferTeamId" />
                 <label class="form-label">New Owner Email</label>
-                <input type="email" class="form-control" id="transferEmail" />
+                <select class="form-select" id="transferEmail"></select>
                 <div class="form-text text-danger mt-2">Note: After transferring, you will become a regular member.</div>
             </div>
             <div class="modal-footer">
@@ -720,11 +720,31 @@
                 });
         }
 
-        // Mở modal Chuyển quyền
+                // Mở modal Chuyển quyền
         function openTransferModal(teamId) {
             document.getElementById('transferTeamId').value = teamId;
-            document.getElementById('transferEmail').value = '';
+            let emailSelect = document.getElementById('transferEmail');
+            emailSelect.innerHTML = '<option value="">Loading members...</option>'; // Hiện chữ chờ tải
+    
             new bootstrap.Modal(document.getElementById('transferModal')).show();
+
+            // Tận dụng API có sẵn của bạn để lấy danh sách thành viên
+            fetch(`/Team/GetTeamDetails?teamId=${teamId}`)
+                .then(res => res.json())
+                .then(data => {
+                    emailSelect.innerHTML = '';
+                    // Lọc ra danh sách thành viên, loại bỏ trưởng nhóm hiện tại
+                    let members = data.members.filter(m => m.id !== data.ownerId);
+            
+                    if (members.length === 0) {
+                        emailSelect.innerHTML = '<option value="" disabled>No other members available</option>';
+                    } else {
+                        members.forEach(m => {
+                            emailSelect.innerHTML += `<option value="${m.email}">${m.username} (${m.email})</option>`;
+                        });
+                    }
+                })
+                .catch(err => console.error('Lỗi tải thành viên:', err));
         }
 
         // Gửi dữ liệu Chuyển quyền
