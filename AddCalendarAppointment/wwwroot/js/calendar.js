@@ -436,11 +436,24 @@ function loadAppointments() {
                             let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                             let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
                             
-                            // MỚI: Kiểm tra nếu Group Meeting đã có người tham gia (khác chủ sở hữu)
-                            let isLocked = (evt.visibility == 1 && evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                            // KIỂM TRA QUYỀN VÀ KHÓA (LOCKED)
+                            let isOwner = evt.isCurrentUserOwner;
+                            let hasOtherParticipants = (evt.visibility == 1 && evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                            
+                            let isLocked = false;
+                            if (evt.visibility == 1) {
+                                if (!isOwner) {
+                                    // Thành viên: Không được làm gì cả trừ Unjoin
+                                    isLocked = true;
+                                } else if (hasOtherParticipants) {
+                                    // Chủ sở hữu: Bị khóa thời gian/nhóm nếu đã có người tham gia
+                                    isLocked = true;
+                                }
+                            }
+
                             let draggableAttr = isLocked ? 'false' : 'true';
                             let resizeHandleHtml = isLocked ? '' : '<div class="resize-handle"></div>';
-                            let lockClass = isLocked ? 'locked-meeting' : '';
+                            let opacityStyle = evt.guestStatus === 0 ? 'opacity: 0.5;' : '';
 
                             let blockHtml = `
                                 <div class="appointment-block p-1 text-white rounded shadow-sm" 
@@ -459,8 +472,9 @@ function loadAppointments() {
                                      data-owneremail="${evt.ownerEmail || ''}"
                                      data-isowner="${evt.isCurrentUserOwner}"
                                      data-locked="${isLocked}"
+                                     data-gueststatus="${evt.guestStatus}"
                                      draggable="${draggableAttr}" 
-                                     style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
+                                     style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden; ${opacityStyle}">
                                     <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                                     <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
                                         ${timeString} ${locString}
@@ -1075,6 +1089,31 @@ $(document).ready(function () {
             $('#detail-visibility-row').removeClass('d-flex').addClass('d-none');
         }
 
+        // --- ẨN/HIỆN NÚT EDIT VÀ TRASH ---
+        let guestStatus = parseInt(block.attr('data-gueststatus'));
+        
+        // Nếu là Group Meeting và không phải chủ sở hữu -> Không cho sửa bất cứ gì
+        if (visibility === "1" && !isOwner) {
+            $('#btn-edit-event').hide();
+            if (guestStatus === 0) {
+                $('#btn-delete-event').hide(); // Hide top trash, use Deny instead
+            } else {
+                $('#btn-delete-event').show();
+            }
+        } else {
+            $('#btn-edit-event').show();
+            $('#btn-delete-event').show();
+        }
+
+        // --- ACCEPT/DENY CHO GUEST ---
+        if (!isOwner && guestStatus === 0) {
+            $('#detail-action-row').removeClass('d-none');
+            $('#btn-accept-invite').data('id', id);
+            $('#btn-deny-invite').data('id', id);
+        } else {
+            $('#detail-action-row').addClass('d-none');
+        }
+
         // --- LOGIC TÍNH TỌA ĐỘ VÀ CHỐNG TRÀN MÀN HÌNH ---
         let $detailPopover = $('#event-detail-popover');
         $detailPopover.show(); // Hiện ra trước để lấy kích thước thật
@@ -1112,6 +1151,33 @@ $(document).ready(function () {
     $('#btn-close-detail').on('click', function () {
         $('#event-detail-popover').hide();
         $('.calendar-body-scroll').css('overflow', 'auto');
+    });
+
+    // Accept/Deny Handlers for Pending Guests
+    $('#btn-accept-invite').on('click', function() {
+        let id = $(this).data('id');
+        $.post('/api/Appointment/accept/' + id, function(res) {
+            if (res.success) {
+                $('#event-detail-popover').hide();
+                $('.calendar-body-scroll').css('overflow', 'auto');
+                loadAppointments();
+            } else {
+                alert("Lỗi: " + res.message);
+            }
+        });
+    });
+
+    $('#btn-deny-invite').on('click', function() {
+        let id = $(this).data('id');
+        $.post('/api/Appointment/unjoin/' + id, function(res) {
+            if (res.success) {
+                $('#event-detail-popover').hide();
+                $('.calendar-body-scroll').css('overflow', 'auto');
+                loadAppointments();
+            } else {
+                alert("Lỗi: " + res.message);
+            }
+        });
     });
 
     $('#btn-delete-event').on('click', function () {

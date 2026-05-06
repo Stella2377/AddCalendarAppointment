@@ -53,6 +53,7 @@ namespace AddCalendarAppointment.Controllers
                     .ThenInclude(a => a.Owner)
                 .Include(t => t.Appointments)
                     .ThenInclude(a => a.Guests)
+                        .ThenInclude(g => g.User)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
 
             if (team == null) return NotFound();

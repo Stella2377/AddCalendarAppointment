@@ -72,7 +72,10 @@ namespace AddCalendarAppointment.Controllers
                 teamName = a.Team?.Name,
                 teamId = a.TeamId,
                 ownerEmail = a.Owner?.Email,
-                isCurrentUserOwner = a.OwnerId == userId
+                isCurrentUserOwner = a.OwnerId == userId,
+                guestStatus = a.Guests != null && a.Guests.Any(g => g.UserId == userId) 
+                    ? (int)a.Guests.First(g => g.UserId == userId).Status 
+                    : 1
             });
 
             return Ok(calendarEvents);
@@ -637,6 +640,35 @@ namespace AddCalendarAppointment.Controllers
                 {
                     // Xóa user khỏi danh sách và lưu lại
                     _context.AppointmentGuests.Remove(guest);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true });
+                }
+
+                return BadRequest(new { success = false, message = "Bạn không nằm trong danh sách tham gia cuộc họp này." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("accept/{id}")]
+        public async Task<IActionResult> Accept(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var targetMeeting = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+                if (targetMeeting == null)
+                    return NotFound(new { success = false, message = "Cuộc họp không tồn tại!" });
+
+                var guest = targetMeeting.Guests.FirstOrDefault(g => g.UserId == userId);
+                if (guest != null)
+                {
+                    guest.Status = GuestStatus.Accepted;
                     await _context.SaveChangesAsync();
                     return Ok(new { success = true });
                 }
