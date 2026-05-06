@@ -180,8 +180,8 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
             <!-- Header Tools (Giống Calendar) -->
             <div class="d-flex justify-content-end align-items-center p-2 bg-light" style="border-bottom: 1px solid #f1f3f4;">
-                <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-pen"></i></button>
-                <button class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-trash"></i></button>
+                <button id="m-btn-edit-event" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-pen"></i></button>
+                <button id="m-btn-delete-event" class="btn btn-sm text-muted px-2 border-0 shadow-none"><i class="fas fa-trash"></i></button>
                 <button type="button" class="btn btn-sm text-muted px-2 border-0 shadow-none" data-bs-dismiss="modal"><i class="fas fa-times"></i></button>
             </div>
             
@@ -271,13 +271,18 @@
 @section Scripts {
     <script>
         let currentGroupMeetings = [];
+        let currentUserIdGlobal = null;
+        let currentTeamIdGlobal = null;
 
         // 1. Xử lý khi bấm nút "Chi tiết"
         function showTeamDetails(teamId) {
+            currentTeamIdGlobal = teamId;
+
             fetch(`/Team/GetTeamDetails?teamId=${teamId}`)
                 .then(response => response.json())
                 .then(data => {
                     currentGroupMeetings = data.groupMeetings;
+                    currentUserIdGlobal = data.currentUserId;
                     document.getElementById('detailTeamName').innerText = data.teamName;
 
                     // --- Render Danh sách thành viên ---
@@ -426,6 +431,107 @@
             } else {
                 pCount.innerText = "0 participants";
             }
+
+            // ==========================================
+            // LOGIC PHÂN QUYỀN HIỂN THỊ NÚT SỬA & XÓA
+            // ==========================================
+            let isOrganizer = (meeting.creatorId === currentUserIdGlobal);
+            let isJoined = meeting.isJoined;
+
+            let $btnEdit = $('#m-btn-edit-event');
+            let $btnDelete = $('#m-btn-delete-event');
+
+            // Ẩn trước và gỡ sự kiện click cũ để tránh gọi API lặp vòng
+            $btnEdit.hide().off('click');
+            $btnDelete.hide().off('click');
+
+            if (isOrganizer) {
+                // 1. ORGANIZER: Thấy cả 2 nút
+                $btnEdit.show();
+                $btnDelete.show();
+
+                // Logic Xóa hoàn toàn
+                $btnDelete.on('click', function() {
+                    if (confirm("Bạn có chắc chắn muốn xóa hoàn toàn cuộc hẹn này không?")) {
+                        $.ajax({
+                            url: '/api/Appointment/delete/' + meeting.id,
+                            type: 'DELETE',
+                            success: function (res) {
+                                if (res.success) {
+                                    alert("Đã xóa cuộc hẹn thành công!");
+                                    bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal')).hide();
+                                    bootstrap.Modal.getInstance(document.getElementById('teamDetailsModal')).hide();
+                                    if (typeof loadAppointments === "function") loadAppointments(); // Load lại lịch nền
+                                } else {
+                                    alert("Xóa thất bại: " + (res.message || ""));
+                                }
+                            }
+                        });
+                    }
+                });
+
+                // Logic Sửa (Mở Modal Full Screen)
+                $btnEdit.on('click', function() {
+                    bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal')).hide();
+                    bootstrap.Modal.getInstance(document.getElementById('teamDetailsModal')).hide();
+
+                    currentEditEventId = meeting.id;
+                    $('#fs-title').val(meeting.title === '(No title)' ? '' : meeting.title);
+                    
+                    // Tách chuỗi dd/MM/yyyy HH:mm từ API trả về
+                    let startParts = meeting.startTime.split(' ');
+                    let sDate = startParts[0].split('/');
+                    $('#fs-start-date').val(`${sDate[2]}-${sDate[1]}-${sDate[0]}`); // Format lại yyyy-MM-dd
+                    $('#fs-start-time').val(startParts[1]);
+
+                    let endParts = meeting.endTime.split(' ');
+                    let eDate = endParts[0].split('/');
+                    $('#fs-end-date').val(`${eDate[2]}-${eDate[1]}-${eDate[0]}`);
+                    $('#fs-end-time').val(endParts[1]);
+
+                    $('#fs-location').val(meeting.location || '');
+                    $('#fs-description').val(meeting.description || '');
+                    $('#fs-notification').val(meeting.notification || '30 minutes before');
+                    
+                    if (typeof setupFsColorDropdown === "function") setupFsColorDropdown(meeting.color);
+
+                    if (typeof fsGuestEmails !== "undefined") {
+                        fsGuestEmails = meeting.participants.filter(p => p !== meeting.ownerEmail);
+                        if (typeof renderFsGuests === "function") renderFsGuests();
+                    }
+
+                    $('#fs-visibility').val("1"); // 1 = Group Meeting
+                    // Tạo một option ảo chứa Team hiện tại để form FullScreen lấy được TeamId khi Save
+                    $('#fs-team-dropdown').html(`<option value="${currentTeamIdGlobal}">${document.getElementById('detailTeamName').innerText}</option>`);
+                    $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+
+                    if (typeof syncEndTimeMin === "function") syncEndTimeMin();
+                    $('#fullScreenEventModal').modal('show');
+                });
+
+            } else if (isJoined) {
+                // 2. MEMBER ĐÃ THAM GIA: Thấy nút thùng rác, chức năng Unjoin
+                $btnDelete.show();
+                $btnDelete.on('click', function() {
+                    if (confirm("Bạn có chắc chắn muốn rời khỏi cuộc họp này không?")) {
+                        $.ajax({
+                            url: '/api/Appointment/unjoin/' + meeting.id,
+                            type: 'POST',
+                            success: function (res) {
+                                if (res.success) {
+                                    alert("Đã rời cuộc họp!");
+                                    bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal')).hide();
+                                    bootstrap.Modal.getInstance(document.getElementById('teamDetailsModal')).hide();
+                                    if (typeof loadAppointments === "function") loadAppointments();
+                                } else {
+                                    alert("Thao tác thất bại: " + (res.message || ""));
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            // 3. MEMBER CHƯA THAM GIA: Code phía trên đã `.hide()` cả 2 nút, nên không cần làm gì thêm, chỉ còn nút X tắt đi.
 
             const mModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('meetingDetailModal'));
             mModal.show();
