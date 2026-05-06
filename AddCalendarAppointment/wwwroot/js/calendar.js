@@ -597,6 +597,34 @@ $(document).on('drop', '.day-col', function (e) {
             EndTime: endTime
         }),
         success: function (res) {
+            // 1. Check trùng lịch Team (Group Meeting)
+            if (res.suggestTeamJoin) {
+                if (confirm(res.message)) {
+                    $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                        if (joinRes.success) {
+                            // Người dùng đồng ý tham gia -> Xóa lịch cũ đang kéo để tránh rác dữ liệu
+                            $.ajax({
+                                url: '/api/Appointment/delete/' + currentId,
+                                type: 'DELETE',
+                                success: function () {
+                                    alert("Đã tham gia cuộc họp nhóm thành công!");
+                                    loadAppointments();
+                                }
+                            });
+                        } else {
+                            alert("Tham gia thất bại: " + joinRes.message);
+                            loadAppointments(); // Reset lịch về vị trí cũ
+                        }
+                    });
+                } else {
+                    // Người dùng Cancel
+                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                    loadAppointments(); // Reset lịch về vị trí cũ
+                }
+                return;
+            }
+
+            // 2. Check trùng lịch thông thường (isOverlap)
             if (res.isOverlap) {
                 if (confirm(res.message)) {
                     $.ajax({
@@ -619,6 +647,8 @@ $(document).on('drop', '.day-col', function (e) {
                 }
                 return;
             }
+
+            // 3. Không có lỗi gì
             if (res.success) loadAppointments();
             else {
                 alert(res.message || "Lưu thất bại!");
@@ -872,11 +902,39 @@ $(document).ready(function () {
             let finalStart = new Date(`${dateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`);
             let finalEnd = new Date(`${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`);
 
+            let resizeId = $resizeBlock.data('id'); // Lưu lại ID trước khi AJAX chạy
+
             // Gọi API Update thời gian
             $.ajax({
                 url: '/api/Appointment/update-time', type: 'POST', contentType: 'application/json',
-                data: JSON.stringify({ Id: $resizeBlock.data('id'), StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
+                data: JSON.stringify({ Id: resizeId, StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
                 success: function (res) { 
+                    // Check trùng lịch Team
+                    if (res.suggestTeamJoin) {
+                        if (confirm(res.message)) {
+                            $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                                if (joinRes.success) {
+                                    // Xóa lịch bị kéo giãn để tránh rác
+                                    $.ajax({
+                                        url: '/api/Appointment/delete/' + resizeId,
+                                        type: 'DELETE',
+                                        success: function () {
+                                            alert("Đã tham gia cuộc họp nhóm thành công!");
+                                            loadAppointments();
+                                        }
+                                    });
+                                } else {
+                                    alert("Tham gia thất bại: " + joinRes.message);
+                                    loadAppointments();
+                                }
+                            });
+                        } else {
+                            alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                            loadAppointments(); // Trả lại kích thước cũ
+                        }
+                        return;
+                    }
+
                     if (res.success) loadAppointments(); 
                     else {
                         alert(res.message || "Cập nhật thất bại!");

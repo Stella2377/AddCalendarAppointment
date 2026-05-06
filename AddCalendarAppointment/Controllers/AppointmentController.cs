@@ -309,7 +309,12 @@ namespace AddCalendarAppointment.Controllers
                     var teamConflict = await _appointmentService.GetTeamConflictAsync(currentAppt.TeamId.Value, currentAppt.Title, newStart, newEnd, request.Id);
                     if (teamConflict != null)
                     {
-                        return Ok(new { success = false, message = "Không thể dời lịch: Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn trong Team!" });
+                        return Ok(new
+                        {
+                            suggestTeamJoin = true,
+                            appointmentId = teamConflict.Id,
+                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                        });
                     }
                 }
                 // --- KẾT THÚC LOGIC CHECK TRÙNG ---
