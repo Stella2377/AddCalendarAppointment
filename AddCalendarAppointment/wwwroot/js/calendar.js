@@ -497,6 +497,10 @@ $(document).on('drop', '.day-col', function (e) {
                 return;
             }
             if (res.success) loadAppointments();
+            else {
+                alert(res.message || "Lưu thất bại!");
+                loadAppointments();
+            }
         },
         error: function () {
             alert("Lỗi kết nối server khi di chuyển lịch!");
@@ -747,7 +751,13 @@ $(document).ready(function () {
             $.ajax({
                 url: '/api/Appointment/update-time', type: 'POST', contentType: 'application/json',
                 data: JSON.stringify({ Id: $resizeBlock.data('id'), StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
-                success: function () { loadAppointments(); }
+                success: function (res) { 
+                    if (res.success) loadAppointments(); 
+                    else {
+                        alert(res.message || "Cập nhật thất bại!");
+                        loadAppointments();
+                    }
+                }
             });
             $resizeBlock = null;
         }

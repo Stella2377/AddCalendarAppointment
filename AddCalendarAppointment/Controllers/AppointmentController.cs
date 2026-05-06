@@ -164,7 +164,7 @@ namespace AddCalendarAppointment.Controllers
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-                return Ok(new { suggestTeamJoin = true, appointmentId = result.suggestedAppointmentId, message = "Phát hiện cuộc họp nhóm trùng tên và thời lượng! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?" });
+                return Ok(new { suggestTeamJoin = true, appointmentId = result.suggestedAppointmentId, message = result.errorMessage });
 
             // suggestOverlapReplacement hiện đã được thay thế bằng isOverlap logic ở trên, 
             // nhưng giữ lại để tương thích nếu Service vẫn trả về.
@@ -295,6 +295,16 @@ namespace AddCalendarAppointment.Controllers
                             }
                         }
                         await _context.SaveChangesAsync();
+                    }
+                }
+                // --- THÊM LOGIC CHECK XUNG ĐỘT NHÓM ---
+                var currentAppt = await _context.Appointments.FindAsync(request.Id);
+                if (currentAppt != null && currentAppt.Visibility == VisibilityType.Public && currentAppt.TeamId != null)
+                {
+                    var teamConflict = await _appointmentService.GetTeamConflictAsync(currentAppt.TeamId.Value, currentAppt.Title, newStart, newEnd, request.Id);
+                    if (teamConflict != null)
+                    {
+                        return Ok(new { success = false, message = "Không thể dời lịch: Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn trong Team!" });
                     }
                 }
                 // --- KẾT THÚC LOGIC CHECK TRÙNG ---
@@ -501,6 +511,16 @@ namespace AddCalendarAppointment.Controllers
                     }
                 }
 
+                // --- THÊM LOGIC CHECK XUNG ĐỘT NHÓM ---
+                if (req.Visibility == VisibilityType.Public && req.TeamId != null)
+                {
+                    var teamConflict = await _appointmentService.GetTeamConflictAsync(req.TeamId.Value, req.Title, req.StartTime, req.EndTime, req.Id);
+                    if (teamConflict != null)
+                    {
+                        return Ok(new { suggestTeamJoin = true, appointmentId = teamConflict.Id, message = "Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?" });
+                    }
+                }
+
                 // Lấy cuộc hẹn CÓ BAO GỒM danh sách Guests từ DB
                 var appt = await _context.Appointments
                     .Include(a => a.Guests)
@@ -522,6 +542,7 @@ namespace AddCalendarAppointment.Controllers
 
                 // --- XỬ LÝ CẬP NHẬT GUESTS ---
                 if (req.GuestEmails == null) req.GuestEmails = new List<string>();
+                if (appt.Guests == null) appt.Guests = new List<AppointmentGuest>();
 
                 // Lấy ra danh sách User tương ứng với mảng Email gửi lên
                 var newGuestUsers = await _context.Users.Where(u => req.GuestEmails.Contains(u.Email)).ToListAsync();

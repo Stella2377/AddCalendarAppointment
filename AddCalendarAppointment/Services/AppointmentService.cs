@@ -78,37 +78,17 @@ namespace AddCalendarAppointment.Services
 
             if (appointment.Visibility == VisibilityType.Public && appointment.TeamId != null)
             {
-                // Tính toán duration
-                TimeSpan currentDuration = appointment.EndTime - appointment.StartTime;
+                // Kiểm tra xem trong Team đã có cuộc họp nào CÙNG TÊN và CHỒNG LẤN THỜI GIAN chưa
+                var teamConflict = await GetTeamConflictAsync(appointment.TeamId.Value, appointment.Title, appointment.StartTime, appointment.EndTime);
 
-                // Kiểm tra xem trong Team đã có cuộc họp nào CÙNG TÊN và CÙNG THỜI LƯỢNG chưa
-                var teamDuplicate = await _context.Appointments
-                    .Where(a => a.TeamId == appointment.TeamId
-                             && a.Visibility == VisibilityType.Public
-                             && a.Title == appointment.Title
-                             && !a.IsDeleted)
-                    .ToListAsync();
-
-                var exactDuplicate = teamDuplicate.FirstOrDefault(a => (a.EndTime - a.StartTime) == currentDuration);
-
-                if (exactDuplicate != null)
+                if (teamConflict != null)
                 {
                     // Trả về suggestTeamJoin = true và ID của cuộc họp đó để Frontend hỏi Join
-                    return (false, "Duplicate found", true, exactDuplicate.Id, false, null);
+                    return (false, "Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?", true, teamConflict.Id, false, null);
                 }
 
-                // Kiểm tra xem có bị chồng lấn (overlap) với cuộc họp Public nào khác của Team không
-                bool hasTeamOverlap = await _context.Appointments
-                    .AnyAsync(a => a.TeamId == appointment.TeamId
-                                 && a.Visibility == VisibilityType.Public
-                                 && a.StartTime < appointment.EndTime
-                                 && a.EndTime > appointment.StartTime
-                                 && !a.IsDeleted);
-
-                if (hasTeamOverlap)
-                {
-                    return (false, "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra. Vui lòng đổi giờ, đổi tên hoặc chuyển sang chế độ Private.", false, null);
-                }
+                // Lưu ý: Theo yêu cầu, người dùng có 3 cách giải quyết xung đột: đổi tên, đổi giờ (không chồng lấn), hoặc set Private.
+                // Do đó, nếu họ đã đổi tên (không còn teamConflict) thì vẫn cho phép tạo dù thời gian có chồng lấn với các cuộc họp khác.
             }
 
             appointment.OwnerId = userId;
@@ -213,6 +193,18 @@ namespace AddCalendarAppointment.Services
 
             _context.Appointments.RemoveRange(trashEvents);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Appointment?> GetTeamConflictAsync(Guid teamId, string title, DateTime start, DateTime end, Guid? excludeId = null)
+        {
+            return await _context.Appointments
+                .FirstOrDefaultAsync(a => a.TeamId == teamId
+                             && a.Visibility == VisibilityType.Public
+                             && a.Title == title
+                             && a.Id != excludeId
+                             && a.StartTime < end
+                             && a.EndTime > start
+                             && !a.IsDeleted);
         }
     }
 }
