@@ -55,6 +55,19 @@
 			</div>
 
 		<div class="header-actions ms-auto d-flex align-items-center">
+			<!-- NÚT CHUÔNG THÔNG BÁO -->
+			<div class="dropdown mx-2">
+				<button class="btn btn-light rounded-circle position-relative p-2 d-flex align-items-center justify-content-center" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: none; width: 36px; height: 36px;">
+					<i class="fa-regular fa-bell fs-5 text-secondary"></i>
+					<span id="notification-badge" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none">
+						<span class="visually-hidden">New alerts</span>
+					</span>
+				</button>
+				<ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-0" aria-labelledby="notificationDropdown" style="width: 350px; max-height: 400px; overflow-y: auto;" id="notification-list-container">
+					<li class="p-3 text-center text-muted">No notifications</li>
+				</ul>
+			</div>
+
             <div class="view-dropdown mx-2">
                 <select id="viewSelector" class="form-select form-select-sm border-secondary rounded-pill">
                     <option value="1">Day</option>

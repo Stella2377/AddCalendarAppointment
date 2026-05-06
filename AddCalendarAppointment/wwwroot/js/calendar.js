@@ -396,6 +396,10 @@ function loadAppointments() {
         url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
+            // Cập nhật chuông thông báo
+            globalAppointments = data;
+            updateNotificationBell();
+
             // Xóa các sự kiện cũ trên UI
             $('.appointment-block').remove();
 
@@ -2070,3 +2074,100 @@ updateCurrentTimeIndicator();
 
 // Thiết lập tự động chạy lại hàm này mỗi 60 giây (60000 ms) mà không cần reload trang
 setInterval(updateCurrentTimeIndicator, 60000);
+
+// ==========================================
+// LOGIC CHUÔNG THÔNG BÁO (NOTIFICATION BELL)
+// ==========================================
+let globalAppointments = [];
+let dismissedNotifications = new Set();
+let currentNewNotifs = [];
+
+function getNotifyMinutes(notifyStr) {
+    if (!notifyStr) return 0;
+    if (notifyStr.includes("10 minutes")) return 10;
+    if (notifyStr.includes("30 minutes")) return 30;
+    if (notifyStr.includes("1 hour")) return 60;
+    return 0;
+}
+
+function updateNotificationBell() {
+    let now = new Date();
+    let hasNew = false;
+    let html = '';
+    currentNewNotifs = []; // Reset danh sách new hiện tại
+
+    // Sắp xếp các cuộc hẹn có thời gian bắt đầu gần nhất lên đầu
+    let sortedAppts = [...globalAppointments].sort((a, b) => new Date(b.start) - new Date(a.start));
+
+    let count = 0;
+    sortedAppts.forEach(evt => {
+        let mins = getNotifyMinutes(evt.notification);
+        if (mins > 0) {
+            count++;
+            let startDt = new Date(evt.start);
+            let notifyTime = new Date(startDt.getTime() - mins * 60000);
+            
+            // Hiện chấm đỏ nếu đã đến giờ thông báo và cuộc hẹn chưa bắt đầu (còn đang đếm ngược)
+            let isNew = false;
+            if (now >= notifyTime && now <= startDt) {
+                isNew = true;
+                if (!dismissedNotifications.has(evt.id)) {
+                    hasNew = true;
+                    currentNewNotifs.push(evt.id);
+                }
+            }
+
+            let typeStr = evt.visibility == 1 ? `Group Meeting${evt.teamName ? ' - ' + evt.teamName : ''}` : 'Private';
+            let iconClass = evt.visibility == 1 ? 'fa-users' : 'fa-lock';
+            
+            html += `
+                <li class="p-2 border-bottom" style="background-color: ${isNew && !dismissedNotifications.has(evt.id) ? '#f8f9fa' : '#fff'};">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-bold" style="font-size: 14px; color: ${evt.color};">
+                                ${isNew && !dismissedNotifications.has(evt.id) ? '<span class="badge bg-danger me-1">New</span>' : ''}
+                                ${evt.title || '(No title)'}
+                            </div>
+                            <div class="text-muted" style="font-size: 12px;">
+                                <i class="fas ${iconClass} me-1"></i> ${typeStr}
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 12px;">
+                                <i class="fas fa-clock me-1"></i> Bắt đầu: ${startDt.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit'})} (${startDt.toLocaleDateString()})
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-dark border ms-2" style="font-size: 11px; white-space: nowrap;">${evt.notification}</span>
+                    </div>
+                </li>
+            `;
+        }
+    });
+
+    if (count === 0) {
+        html = '<li class="p-3 text-center text-muted">No notifications</li>';
+    }
+
+    $('#notification-list-container').html(html);
+
+    if (hasNew) {
+        $('#notification-badge').removeClass('d-none');
+    } else {
+        $('#notification-badge').addClass('d-none');
+    }
+}
+
+// Kiểm tra định kỳ mỗi phút
+setInterval(function() {
+    if (globalAppointments.length > 0) {
+        updateNotificationBell();
+    }
+}, 60000);
+
+// Khi click vào chuông thì ẩn dấu chấm đỏ và đánh dấu đã đọc
+$(document).on('click', '#notificationDropdown', function() {
+    $('#notification-badge').addClass('d-none');
+    currentNewNotifs.forEach(id => dismissedNotifications.add(id));
+    // Xóa chữ "New" trên giao diện ngay lập tức
+    $('#notification-list-container .badge.bg-danger').remove();
+    // Bỏ màu nền
+    $('#notification-list-container li').css('background-color', '#fff');
+});
