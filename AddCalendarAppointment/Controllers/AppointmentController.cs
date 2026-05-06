@@ -327,6 +327,13 @@ namespace AddCalendarAppointment.Controllers
                 if (appt == null)
                     return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
 
+                // Check group meeting lock
+                var apptWithGuests = await _context.Appointments.Include(a => a.Guests).FirstOrDefaultAsync(a => a.Id == request.Id);
+                if (apptWithGuests != null && apptWithGuests.Visibility == VisibilityType.Public && apptWithGuests.Guests != null && apptWithGuests.Guests.Any(g => g.UserId != apptWithGuests.OwnerId))
+                {
+                    return Ok(new { success = false, message = "Locked: Group meetings with participants cannot be rescheduled." });
+                }
+
                 // Cập nhật thời gian mới
                 appt.StartTime = newStart;
                 appt.EndTime = newEnd;
@@ -543,6 +550,20 @@ namespace AddCalendarAppointment.Controllers
 
                 if (appt == null)
                     return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
+
+                // MỚI: Kiểm tra khóa Group Meeting
+                bool isLocked = (appt.Visibility == VisibilityType.Public && appt.Guests != null && appt.Guests.Any(g => g.UserId != appt.OwnerId));
+                if (isLocked)
+                {
+                    bool timeChanged = (appt.StartTime != req.StartTime || appt.EndTime != req.EndTime);
+                    bool teamChanged = (appt.TeamId != req.TeamId);
+                    bool visibilityChanged = (appt.Visibility != req.Visibility);
+
+                    if (timeChanged || teamChanged || visibilityChanged)
+                    {
+                        return Ok(new { success = false, message = "Locked: Time, Team, and Visibility cannot be changed for group meetings with participants." });
+                    }
+                }
 
                 // Cập nhật các thông tin cơ bản
                 appt.Title = string.IsNullOrWhiteSpace(req.Title) ? "(No title)" : req.Title;

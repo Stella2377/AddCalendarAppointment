@@ -435,6 +435,12 @@ function loadAppointments() {
                             let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
                             let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                             let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                            
+                            // MỚI: Kiểm tra nếu Group Meeting đã có người tham gia (khác chủ sở hữu)
+                            let isLocked = (evt.visibility == 1 && evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                            let draggableAttr = isLocked ? 'false' : 'true';
+                            let resizeHandleHtml = isLocked ? '' : '<div class="resize-handle"></div>';
+                            let lockClass = isLocked ? 'locked-meeting' : '';
 
                             let blockHtml = `
                                 <div class="appointment-block p-1 text-white rounded shadow-sm" 
@@ -451,13 +457,14 @@ function loadAppointments() {
                                      data-teamid="${evt.teamId || ''}"
                                      data-teamname="${evt.teamName || ''}"
                                      data-owneremail="${evt.ownerEmail || ''}"
-                                     draggable="true" 
+                                     data-locked="${isLocked}"
+                                     draggable="${draggableAttr}" 
                                      style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
                                     <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
                                     <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
                                         ${timeString} ${locString}
                                     </div>
-                                    <div class="resize-handle"></div>
+                                    ${resizeHandleHtml}
                                 </div>
                             `;
                             $column.append(blockHtml);
@@ -1608,6 +1615,9 @@ $(document).on('click', '#btn-more-options', function (e) {
     e.preventDefault();
     currentEditEventId = null; // Đang tạo mới
 
+    // Reset disabled fields
+    $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
+
     // Bê dữ liệu từ mini popover sang
     $('#fs-title').val($('#popover-title').val());
     $('#fs-start-date').val($('#popover-start-date').val());
@@ -1646,6 +1656,15 @@ $(document).on('click', '#btn-edit-event', function (e) {
 
     // Tìm event block trên UI để lấy data
     let $block = $(`.appointment-block[data-id='${currentEditEventId}']`);
+    let isLocked = $block.attr('data-locked') === 'true';
+
+    // Reset disabled fields before applying lock
+    $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
+
+    if (isLocked) {
+        $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', true);
+    }
+
     let start = new Date($block.data('start'));
     let end = new Date($block.data('end'));
 
