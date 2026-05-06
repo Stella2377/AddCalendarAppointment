@@ -107,7 +107,7 @@ namespace AddCalendarAppointment.Services
 
                 if (hasTeamOverlap)
                 {
-                    return (false, "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra. Vui lòng đổi giờ, đổi tên hoặc chuyển sang chế độ Private.", false, null);
+                    return (false, "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra. Vui lòng đổi giờ, đổi tên hoặc chuyển sang chế độ Private.", false, null, false, null);
                 }
             }
 

@@ -55,6 +55,21 @@ body {
         color: #3c4043;
     }
 
+/* Bổ sung Header Actions từ File 2 (Không có thanh tìm kiếm) */
+.header-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    gap: 10px;
+}
+
+.view-dropdown select {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
 /* --- MAIN LAYOUT --- */
 .app-body {
     display: flex;
@@ -211,43 +226,42 @@ body {
     border-right: 1px solid var(--border-color);
 }
 
+/* Tìm và thay thế đoạn .time-slot cũ */
 .time-slot {
     height: 60px;
     text-align: right;
-    padding-right: 8px;
+    padding-right: 12px; /* Tăng khoảng cách để chữ sát vách ngăn */
     position: relative;
+    /* Bỏ border-bottom ở đây nếu muốn giống hình 2 - chỉ để lại đường lưới bên .day-col */
+    border-bottom: none; 
 }
 
-    .time-slot span {
-        position: relative;
-        top: -10px;
-        font-size: 10px;
-        color: #70757a;
-    }
+.time-slot span {
+    position: relative;
+    top: -10px; /* Đưa chữ lên giữa đường kẻ ngang của hàng */
+    font-size: 11px; /* Kích thước chữ AM/PM thường nhỏ hơn */
+    color: #70757a;
+    font-weight: 400;
+    white-space: nowrap; /* Tránh việc AM/PM bị nhảy dòng */
+}
 
 /* Các cột ngày */
 .day-col {
-    cursor: crosshair; /* Báo hiệu có thể kéo thả tạo sự kiện */
+    cursor: crosshair; 
     border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color); /* Tạo lưới ngang */
     position: relative;
 }
 
     .day-col::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
-        background-size: 100% 60px; /* Đường kẻ ngang mỗi giờ */
+        display: none !important; /* Bỏ gradient cũ để dùng border-bottom cho sạch */
     }
 
 /* --- APPOINTMENT BLOCKS --- */
 .appointment-block {
     position: absolute;
     left: 4px;
-    right: 8px; /* Margin trong cột */
+    right: 8px; 
     border-radius: 4px;
     padding: 4px 8px;
     color: white;
@@ -271,18 +285,16 @@ body {
 /* Yêu cầu 4: Trạng thái Khách mời (Guest Status) */
 .event-pending {
     background-color: transparent !important;
-    border: 2px dashed var(--primary-color); /* Viền đứt đoạn */
+    border: 2px dashed var(--primary-color); 
     color: var(--primary-color) !important;
 }
 
 .event-maybe {
-    opacity: 0.5; /* Hiển thị màu pastel mờ */
+    opacity: 0.5; 
 }
 
 
-/* ==========================================
-   CSS CHO FORM POPOVER (MỚI THÊM)
-   ========================================== */
+/* --- CSS CHO FORM POPOVER --- */
 #event-popover {
     box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
     border-radius: 12px !important;
@@ -310,9 +322,7 @@ body {
     max-width: 130px;
 }
 
-/* ==========================================
-   CSS CHO RESIZE VÀ DETAIL POPOVER
-   ========================================== */
+/* --- CSS CHO RESIZE VÀ DETAIL POPOVER --- */
 .appointment-block .resize-handle {
     position: absolute;
     bottom: 0;
@@ -338,4 +348,104 @@ body {
     width: 24px;
     text-align: center;
     color: #5f6368;
+}
+
+/* ==========================================
+   BỔ SUNG CÁC CHẾ ĐỘ XEM (MONTH/YEAR) TỪ FILE 2
+   (Thêm vào dưới cùng, không làm đảo lộn file 1)
+   ========================================== */
+/* Chế độ nhiều hàng (Month, 2-3 Weeks) */
+.calendar-grid.multi-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr) !important;
+    grid-auto-rows: minmax(120px, auto);
+    min-width: unset;
+}
+.calendar-grid.multi-row .time-col,
+.calendar-header-grid.multi-row .time-header {
+    display: none;
+}
+.calendar-header-grid.multi-row {
+    grid-template-columns: repeat(7, 1fr) !important;
+}
+.calendar-grid.multi-row .day-col {
+    min-height: 120px;
+}
+
+/* Chế độ Year View */
+.calendar-grid.year-view {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px;
+    padding: 20px;
+}
+.year-month-box { font-size: 12px; }
+.year-month-title { font-weight: bold; color: var(--primary-color); margin-bottom: 5px; }
+.current-day-circle { background-color: #1a73e8 !important; color: #fff !important; border-radius: 50%; }
+.selected-day-light { background-color: #e8f0fe !important; color: #1a73e8 !important; border-radius: 50%; }
+
+/* Cố định kích thước ô ngày để không bao giờ bị nhảy hàng khi đổi màu */
+.year-day-cell, .mini-calendar-day {
+    width: 28px !important; /* Cố định chiều rộng */
+    height: 28px !important; /* Cố định chiều cao */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 11px;
+    margin: 1px;
+    transition: background-color 0.2s;
+    border: none !important; /* Không dùng border để tránh tăng kích thước ô */
+}
+
+/* Trạng thái ngày được chọn trong mini-calendar hoặc year view */
+.selected-day {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background-color: #1a73e8;
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+}
+
+/* --- ĐỒNG BỘ LOGIC MÀU SẮC & KÍCH THƯỚC --- */
+/* Cố định kích thước cho tất cả các loại ô ngày */
+/* Tìm và thay thế đoạn CSS cũ bằng đoạn này */
+.year-day-cell, .mini-calendar-day {
+    box-sizing: border-box; /* Cực kỳ quan trọng: giữ kích thước cố định */
+    width: 28px !important;
+    height: 28px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 11px;
+    margin: 1px;
+    transition: background-color 0.2s, color 0.2s;
+    border: none !important;
+    position: relative; /* Để xử lý các icon thông báo nếu có */
+}
+
+/* 1. Trạng thái Hôm nay (Xanh đậm) */
+/* 1. Ngày hôm nay (Mặc định ưu tiên cao nhất) */
+.current-day-circle {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    font-weight: bold;
+}
+
+/* 2. Ngày được chọn (Nhưng không phải là hôm nay) */
+.selected-day-light {
+    background-color: #d2e3fc !important; /* Màu xanh nhạt Google */
+    color: #185abc !important;
+}
+
+/* 3. Hiệu ứng Hover cho các ngày không có highlight */
+.year-day-cell:not(.current-day-circle):hover {
+    background-color: #f1f3f4;
 }

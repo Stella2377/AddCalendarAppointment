@@ -152,17 +152,24 @@ $(document).ready(function () {
         syncAllCalendars();
     });
 
-    // Hàm đồng bộ tất cả các thành phần lịch
-    function syncAllCalendars() {
-        renderDynamicMiniCalendar(currDate);
-        updateMainMonthTitle(currDate);
-        renderMainCalendar(); // Vẽ lại lưới lịch chính
-    }
-
     $('#btnToggleSidebar').on('click', function () {
         $('#sidebar').toggleClass('collapsed');
     });
 });
+
+// Hàm đồng bộ tất cả các thành phần lịch
+function syncAllCalendars() {
+    renderDynamicMiniCalendar(currDate);
+    updateMainMonthTitle(currDate);
+    renderMainCalendar(); // Vẽ lại lưới lịch chính
+}
+
+// Định dạng hiển thị cột thời gian 
+function formatHour12(h) {
+    if (h === 0) return "12AM"; // Để trống dòng 0h cho thoáng giống Google Calendar
+    if (h === 12) return "12 PM";
+    return h > 12 ? (h - 12) + " PM" : h + " AM";
+}
 
 // ==========================================
 // HÀM VẼ LƯỚI LỊCH CHÍNH (MAIN CALENDAR) - MỚI BỔ SUNG
@@ -172,44 +179,185 @@ function renderMainCalendar() {
     const $calendarGrid = $('.calendar-grid');
     const viewMode = parseInt($('#viewSelector').val() || 7);
 
-    // Xóa các cột cũ (Giữ lại cột GMT/Time-col)
-    $headerGrid.find('.day-header').remove();
-    $calendarGrid.find('.day-col').remove();
+    // 1. DỌN DẸP TRIỆT ĐỂ TRƯỚC KHI VẼ MỚI
+    // Xóa sạch nội dung cũ trong cả header và body
+    $headerGrid.empty().removeClass('multi-row').show(); 
+    $calendarGrid.empty().removeClass('multi-row year-view');
+    
+    // Reset lại CSS Grid về mặc định (để tránh bị kẹt layout của Year/Month)
+    $headerGrid.css('grid-template-columns', '');
+    $calendarGrid.css('grid-template-columns', '');
+    $('.time-col').show(); // Mặc định hiện cột giờ bên trái
 
-    // Tính toán ngày bắt đầu hiển thị
     let startDate = new Date(currDate);
-    if (viewMode === 7) {
-        // Nếu là tuần, đưa về ngày Thứ 2 (hoặc Chủ nhật tùy bạn, ở đây là Thứ 2)
-        let day = startDate.getDay();
-        let diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-        startDate.setDate(diff);
-    }
 
-    for (let i = 0; i < viewMode; i++) {
-        let d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
+    // 2. PHÂN LUỒNG LOGIC HIỂN THỊ
 
-        let dateStr = d.toISOString().split('T')[0];
-        let isToday = new Date().toDateString() === d.toDateString();
-        let activeClass = isToday ? 'active' : '';
+    // --- CHẾ ĐỘ 1: XEM THEO CỘT (Day/Week - <= 7 ngày) ---
+    if (viewMode <= 7) {
+        document.documentElement.style.setProperty('--col-count', viewMode);
+        
+        // ✅ 1. HEADER - CỘT GMT
+    $headerGrid.append(`
+        <div class="time-header" 
+             style="width:60px; font-size:10px; display:flex; align-items:flex-end; justify-content:center; color:#70757a; padding-bottom:5px;">
+            GMT+07
+        </div>
+    `);
 
-        // 1. Vẽ Header (THỨ + NGÀY)
-        $headerGrid.append(`
-            <div class="day-header ${activeClass}">
-                <div class="day-name">${d.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</div>
-                <div class="day-num">${d.getDate()}</div>
+    // ✅ 2. BODY - CỘT GIỜ (QUAN TRỌNG NHẤT)
+    let $timeCol = $('<div class="time-col"></div>');
+    for (let h = 0; h < 24; h++) {
+        $timeCol.append(`
+            <div class="time-slot">
+                <span>${formatHour12(h)}</span>
             </div>
         `);
+    }
+    $calendarGrid.append($timeCol); // 👈 PHẢI append trước day-col
+        
+        if (viewMode === 7) {
+            let day = startDate.getDay();
+            startDate.setDate(startDate.getDate() - (day === 0 ? 6 : day - 1));
+        }
 
-        // 2. Vẽ Cột ngày nội dung
-        $calendarGrid.append(`<div class="day-col" data-date="${dateStr}"></div>`);
+        for (let i = 0; i < viewMode; i++) {
+            let d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            
+            renderColumnHeader($headerGrid, d);
+            
+            // Tạo cột ngày
+            let $col = $(`<div class="day-col" data-date="${d.toISOString().split('T')[0]}" style="position: relative; border-right: 1px solid #ddd;"></div>`);
+            
+            // --- PHẦN SỬA: Thêm lưới giờ chính xác ---
+            for (let h = 0; h < 24; h++) {
+                $col.append(`<div class="hour-marker" style="height: 60px; border-bottom: 1px solid #eee; box-sizing: border-box;"></div>`);
+            }
+            
+            $calendarGrid.append($col);
+        }
+    }
+    
+    // --- CHẾ ĐỘ 2: XEM THEO HÀNG (Month/2-3 Weeks) ---
+    else if (viewMode > 7 && viewMode <= 31) {
+        $headerGrid.addClass('multi-row');
+        $calendarGrid.addClass('multi-row');
+        $('.time-col').hide(); // Ẩn cột giờ 24h
+
+        const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+        dayNames.forEach(name => $headerGrid.append(`<div class="day-header" style="padding:10px 0;">${name}</div>`));
+
+        // Logic đưa startDate về đầu tuần của tháng
+        let firstOfMonth = new Date(currDate.getFullYear(), currDate.getMonth(), 1);
+        let startDay = firstOfMonth.getDay();
+        let diff = firstOfMonth.getDate() - startDay + (startDay === 0 ? -6 : 1);
+        startDate = new Date(firstOfMonth.setDate(diff));
+
+        for (let i = 0; i < 35; i++) {
+            let d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            $calendarGrid.append(`
+                <div class="day-col box-view" data-date="${d.toISOString().split('T')[0]}" style="border-right:1px solid #dadce0; border-bottom:1px solid #dadce0; min-height:120px;">
+                    <span class="m-1 d-block ${d.getMonth() !== currDate.getMonth() ? 'text-muted' : ''}" style="font-size:12px; font-weight:500;">${d.getDate()}</span>
+                </div>`);
+        }
+    }
+    
+    // --- CHẾ ĐỘ 3: XEM NĂM (Year View - Hình 1 của bạn) ---
+    else {
+        $headerGrid.hide();
+        $('.time-col').hide();
+        $calendarGrid.addClass('year-view');
+        
+        for (let m = 0; m < 12; m++) {
+            let monthDate = new Date(currDate.getFullYear(), m, 1);
+            let $monthBox = $(`
+                <div class="year-month-box" style="padding:10px;">
+                    <div class="year-month-title" style="color:#1a73e8; font-weight:bold; font-size:14px; margin-bottom:8px;">
+                        Tháng ${m + 1}
+                    </div>
+                    <div class="mini-calendar-render-target" id="year-m-${m}"></div>
+                </div>`);
+            
+            $calendarGrid.append($monthBox);
+            renderMonthInYearView(monthDate, `#year-m-${m}`);
+        }
     }
 
-    // Sau khi vẽ khung xong, load dữ liệu sự kiện vào
-    if (typeof loadAppointments === "function") {
-        loadAppointments();
-    }
+    if (typeof loadAppointments === "function") loadAppointments();
 }
+
+// Hàm bổ trợ để vẽ các tháng nhỏ trong Year View
+function renderMonthInYearView(date, containerId) {
+    const $container = $(containerId);
+    $container.empty();
+
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    // Logic Thứ 2 đầu tuần (M T W T F S S)
+    let firstDay = new Date(year, month, 1).getDay();
+    let shiftIndex = (firstDay === 0) ? 6 : firstDay - 1;
+
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const prevLastDay = new Date(year, month, 0).getDate();
+
+    let html = '<table class="mini-calendar-table w-100" style="text-align: center; border-collapse: separate; border-spacing: 0 2px;">';
+    html += '<thead><tr><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead>';
+    html += '<tbody>';
+
+    let days = [];
+    for (let i = shiftIndex; i > 0; i--) days.push({ d: prevLastDay - i + 1, m: 'muted' });
+    for (let i = 1; i <= lastDay; i++) days.push({ d: i, m: 'current' });
+    while (days.length < 42) days.push({ d: days.length - lastDay - shiftIndex + 1, m: 'muted' });
+
+    const today = new Date();
+
+    for (let i = 0; i < days.length; i += 7) {
+        html += '<tr>';
+        days.slice(i, i + 7).forEach(dayObj => {
+            let cls = dayObj.m === 'muted' ? 'text-muted' : '';
+            let stateClass = '';
+
+            // Chỉ xét highlight cho ngày thuộc tháng hiện tại
+            if (dayObj.m === 'current') {
+                const isToday = (dayObj.d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+                const isSelected = (dayObj.d === currDate.getDate() && month === currDate.getMonth() && year === currDate.getFullYear());
+
+                if (isToday) {
+                    stateClass = "current-day-circle"; // Class xanh đậm của bạn
+                } else if (isSelected) {
+                    stateClass = "selected-day-light"; // Class xanh nhạt của bạn
+                }
+            }
+
+            // Gán class .year-day-cell để lấy kích thước cố định 28px từ CSS của bạn
+            html += `<td style="padding: 0;">
+                        <div class="year-day-cell ${cls} ${stateClass}" 
+                             data-day="${dayObj.d}" 
+                             data-month="${month}" 
+                             data-year="${year}"
+                             data-type="${dayObj.m}">
+                            ${dayObj.d}
+                        </div>
+                    </td>`;
+        });
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    $container.append(html);
+}
+
+function renderColumnHeader($container, date) {
+    let isToday = new Date().toDateString() === date.toDateString();
+    $container.append(`
+        <div class="day-header ${isToday ? 'active' : ''}">
+            <div class="day-name">${date.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</div>
+            <div class="day-num">${date.getDate()}</div>
+        </div>`);
+} 
+
 
 // ==========================================
 // HÀM VẼ MINI CALENDAR
@@ -282,6 +430,16 @@ function renderDynamicMiniCalendar(date) {
     }
 }
 
+$(document).on('click', '.mini-calendar-table td', function () {
+    const dateStr = $(this).data('date');
+    if (!dateStr) return;
+
+    currDate = new Date(dateStr);
+
+    // Sync toàn bộ UI
+    syncAllCalendars();
+});
+
 // ==========================================
 // CÁC HÀM GỌI AJAX & UTILS
 // ==========================================
@@ -294,57 +452,91 @@ function loadAppointments() {
             // Xóa các sự kiện cũ trên UI
             $('.appointment-block').remove();
 
-            // TIẾN HÀNH VẼ TRỰC TIẾP HTML RA LỊCH (Không chia cột nữa)
+            // Kiểm tra xem có đang ở chế độ hiển thị ô vuông (Month/Multi-row) hay không
+            const isBoxView = $('.calendar-grid').hasClass('multi-row');
+
             data.forEach(function (evt) {
                 let dateStr = evt.start.split('T')[0];
                 let startDate = new Date(evt.start);
                 let endDate = new Date(evt.end);
 
-                let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
-                let durationMins = (endDate - startDate) / (1000 * 60);
-                let heightPx = durationMins > 0 ? durationMins : 60;
-
                 let $column = $(`.day-col[data-date='${dateStr}']`);
 
                 if ($column.length > 0) {
-                    let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-                        " - " + endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-                    let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+                    // Xử lý dữ liệu an toàn để đưa vào data-attributes
                     let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
                     let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                     let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                    let titleStr = evt.title || '(No title)';
 
-                    // Cấu trúc HTML Khối sự kiện (Mặc định cố định width 95% và left 0)
-                    let blockHtml = `
-                        <div class="appointment-block p-1 text-white rounded shadow-sm" 
-                             data-id="${evt.id}" 
-                             data-title="${evt.title || '(No title)'}"
-                             data-notification="${evt.notification || '30 minutes before'}"
-                             data-start="${evt.start}"
-                             data-end="${evt.end}"
-                             data-color="${evt.color}"
-                             data-location="${locHtmlStr}"
-                             data-description="${descStr}"
-                             data-guests="${guestsJson}"
-                             data-visibility="${evt.visibility}"
-                             data-teamid="${evt.teamId || ''}"
-                             data-teamname="${evt.teamName || ''}"
-                             data-owneremail="${evt.ownerEmail || ''}"
-                             draggable="true" 
-                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
-                            <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
-                            <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
-                                ${timeString} ${locString}
+                    let blockHtml = '';
+
+                    if (isBoxView) {
+                        // --- CHẾ ĐỘ XEM Ô (MONTH/2-3 WEEKS) ---
+                        // Hiển thị dạng nhãn dán xếp chồng tự nhiên, không cần top/height tuyệt đối
+                        blockHtml = `
+                            <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                                 data-id="${evt.id}" 
+                                 data-title="${titleStr.replace(/"/g, '&quot;')}"
+                                 data-start="${evt.start}"
+                                 data-end="${evt.end}"
+                                 data-color="${evt.color}"
+                                 data-location="${locHtmlStr}"
+                                 data-description="${descStr}"
+                                 data-guests="${guestsJson}"
+                                 style="background-color: ${evt.color || '#3f51b5'}; margin-bottom: 2px; position: relative; width: 100%; font-size: 11px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <span class="title" style="font-weight: 600;">
+                                    ${startDate.getHours()}:${String(startDate.getMinutes()).padStart(2, '0')} ${titleStr}
+                                </span>
                             </div>
-                            <div class="resize-handle"></div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        // --- CHẾ ĐỘ XEM CỘT (DAY/WEEK) ---
+                        // Tính toán vị trí theo pixel dựa trên thời gian (60px mỗi giờ)
+                        let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
+                        let durationMins = (endDate - startDate) / (1000 * 60);
+                        let heightPx = durationMins > 0 ? durationMins : 60;
+
+                        let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                                         " - " +
+                                         endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                        let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+
+                        blockHtml = `
+                            <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                                 data-id="${evt.id}" 
+                                 data-title="${titleStr.replace(/"/g, '&quot;')}"
+                                 data-notification="${evt.notification || '30 minutes before'}"
+                                 data-start="${evt.start}"
+                                 data-end="${evt.end}"
+                                 data-color="${evt.color}"
+                                 data-location="${locHtmlStr}"
+                                 data-description="${descStr}"
+                                 data-guests="${guestsJson}"
+                                 data-visibility="${evt.visibility}"
+                                 data-teamid="${evt.teamId || ''}"
+                                 data-teamname="${evt.teamName || ''}"
+                                 data-owneremail="${evt.ownerEmail || ''}"
+                                 draggable="true" 
+                                 style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; cursor: grab; background-color: ${evt.color || '#3f51b5'}; border: 1px solid white; overflow: hidden; user-select: none;">
+                                <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${titleStr}</div>
+                                <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                                    ${timeString}
+                                    ${locString}
+                                </div>
+                                <div class="resize-handle"></div>
+                            </div>
+                        `;
+                    }
                     $column.append(blockHtml);
                 }
             });
 
-            applyColorFilter();
+            // Gọi hàm lọc màu nếu có
+            if (typeof applyColorFilter === "function") {
+                applyColorFilter();
+            }
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -1632,5 +1824,52 @@ $(document).on('change', '#fs-visibility', function () {
     } else {
         $row.addClass('d-none').removeClass('d-flex');
         $dropdown.empty().append('<option value="">-- Select Team --</option>');
+    }
+});
+
+// ==========================================
+// BỔ SUNG ĐỂ ĐỒNG BỘ 2 CHIỀU (KHÔNG SỬA HÀM CŨ)
+// ==========================================
+
+$(document).on('click', '.year-day-cell, [data-date]', function () {
+    const $this = $(this);
+    
+    // 1. Lấy dữ liệu ngày tháng từ ô vừa click (tương thích cả 2 bên)
+    let dateStr = $this.attr('data-date'); // YYYY-MM-DD
+    let d, m, y;
+
+    if (dateStr) {
+        const parts = dateStr.split('-');
+        y = parseInt(parts[0]);
+        m = parseInt(parts[1]) - 1; // Tháng trong JS từ 0-11
+        d = parseInt(parts[2]);
+    } else {
+        // Dự phòng nếu bạn dùng data-day, data-month...
+        d = $this.data('day');
+        m = $this.data('month');
+        y = $this.data('year');
+    }
+
+    if (!d || m === undefined || !y) return;
+
+    // 2. Cập nhật biến toàn cục dùng chung
+    currDate = new Date(y, m, d);
+
+    // 3. Cập nhật giao diện Main Calendar
+    // Nếu đang ở Year View (365), khi click thường sẽ nhảy về Week/Day
+    if ($('#viewSelector').val() == 365) {
+        $('#viewSelector').val(7); // Chuyển về Week View
+    }
+    
+    if (typeof renderMainCalendar === "function") {
+        renderMainCalendar();
+    }
+
+    // 4. Cập nhật giao diện Sidebar (Mini Calendar)
+    // Gọi hàm render của sidebar để nó vẽ lại và nhận diện class 'selected-day-light'
+    if (typeof renderSidebarCalendar === "function") {
+        renderSidebarCalendar();
+    } else if (typeof updateMiniCalendar === "function") {
+        updateMiniCalendar();
     }
 });
