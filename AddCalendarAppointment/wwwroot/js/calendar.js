@@ -457,6 +457,7 @@ function loadAppointments() {
                                      data-teamid="${evt.teamId || ''}"
                                      data-teamname="${evt.teamName || ''}"
                                      data-owneremail="${evt.ownerEmail || ''}"
+                                     data-isowner="${evt.isCurrentUserOwner}"
                                      data-locked="${isLocked}"
                                      draggable="${draggableAttr}" 
                                      style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
@@ -975,6 +976,7 @@ $(document).ready(function () {
 
         let visibility = block.attr('data-visibility');
         let teamName = block.attr('data-teamname');
+        let isOwner = block.attr('data-isowner') === 'true';
 
         if (!startStr || !endStr) return;
 
@@ -995,6 +997,11 @@ $(document).ready(function () {
         $('#detail-color-dot').css('background-color', color);
         $('#btn-delete-event').data('id', id);
         $('#detail-notification').text(notification);
+
+        // Truyền data vào nút xóa
+        $('#btn-delete-event').data('id', id);
+        $('#btn-delete-event').data('isowner', isOwner);
+        $('#btn-delete-event').data('visibility', visibility);
 
         // --- XỬ LÝ ẨN/HIỆN CÁC TRƯỜNG DỮ LIỆU ---
 
@@ -1109,15 +1116,43 @@ $(document).ready(function () {
 
     $('#btn-delete-event').on('click', function () {
         let id = $(this).data('id');
-        if (confirm('Bạn có chắc chắn muốn xóa cuộc hẹn này?')) {
+        let isOwner = $(this).data('isowner');
+        // Ép kiểu về string để so sánh cho an toàn
+        let visibility = String($(this).data('visibility'));
+
+        // Cấu hình mặc định cho Owner (Xóa sự kiện)
+        let confirmMessage = 'Bạn có chắc chắn muốn xóa cuộc hẹn này?';
+        let apiUrl = '/api/Appointment/delete/' + id;
+        let httpMethod = 'DELETE';
+
+        // Nếu là Group Meeting (1) VÀ không phải Owner -> Đổi sang chế độ Rời khỏi (Unjoin)
+        if (visibility === "1" && !isOwner) {
+            confirmMessage = 'Bạn có chắc muốn rời group meeting này không?';
+            apiUrl = '/api/Appointment/unjoin/' + id;
+            httpMethod = 'POST';
+        }
+
+        if (confirm(confirmMessage)) {
             $.ajax({
-                url: '/api/Appointment/delete/' + id, type: 'DELETE',
-                success: function () {
-                    $('#event-detail-popover').hide();
-                    $('.calendar-body-scroll').css('overflow', 'auto'); // <--- THÊM DÒNG NÀY
-                    loadAppointments();
+                url: apiUrl,
+                type: httpMethod,
+                success: function (res) {
+                    if (res.success) {
+                        $('#event-detail-popover').hide();
+                        $('.calendar-body-scroll').css('overflow', 'auto');
+                        loadAppointments();
+                    } else {
+                        alert("Thao tác thất bại: " + (res.message || "Lỗi không xác định"));
+                    }
                 },
-                error: function () { alert('Lỗi khi xóa!'); }
+                error: function (xhr) {
+                    // Bắt lỗi chi tiết từ server gửi về nếu có
+                    let msg = "Lỗi khi xử lý thao tác!";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                }
             });
         }
     });

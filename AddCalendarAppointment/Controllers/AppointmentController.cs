@@ -71,7 +71,8 @@ namespace AddCalendarAppointment.Controllers
                 visibility = (int)a.Visibility,
                 teamName = a.Team?.Name,
                 teamId = a.TeamId,
-                ownerEmail = a.Owner?.Email
+                ownerEmail = a.Owner?.Email,
+                isCurrentUserOwner = a.OwnerId == userId
             });
 
             return Ok(calendarEvents);
@@ -610,6 +611,37 @@ namespace AddCalendarAppointment.Controllers
                 await _context.SaveChangesAsync();
 
                 return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("unjoin/{id}")]
+        public async Task<IActionResult> Unjoin(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var targetMeeting = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+                if (targetMeeting == null)
+                    return NotFound(new { success = false, message = "Cuộc họp không tồn tại!" });
+
+                // Tìm user trong danh sách khách mời
+                var guest = targetMeeting.Guests.FirstOrDefault(g => g.UserId == userId);
+                if (guest != null)
+                {
+                    // Xóa user khỏi danh sách và lưu lại
+                    _context.AppointmentGuests.Remove(guest);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true });
+                }
+
+                return BadRequest(new { success = false, message = "Bạn không nằm trong danh sách tham gia cuộc họp này." });
             }
             catch (Exception ex)
             {
