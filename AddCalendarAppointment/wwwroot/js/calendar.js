@@ -162,6 +162,102 @@ $(document).ready(function () {
     $('#btnToggleSidebar').on('click', function () {
         $('#sidebar').toggleClass('collapsed');
     });
+
+    // Ràng buộc giờ kết thúc phải sau giờ bắt đầu
+    function syncEndTimeMin() {
+        // Cho Mini Popover
+        let popStartDate = $('#popover-start-date').val();
+        let popStartTime = $('#popover-start-time').val();
+        let popEndTime = $('#popover-end-time').val();
+
+        if (popStartTime && popEndTime) {
+            let [startH] = popStartTime.split(':').map(Number);
+            let [endH] = popEndTime.split(':').map(Number);
+
+            // Logic Chiều tối (>=18h) -> Sáng hôm sau (<=11h)
+            if (startH >= 18 && endH <= 11) {
+                let d = new Date(popStartDate);
+                d.setDate(d.getDate() + 1);
+                let edStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                $('#popover-end-date').val(edStr).show();
+            } else {
+                // Nếu không rơi vào case đêm, kiểm tra Start > End cùng ngày
+                if (popStartTime > popEndTime) {
+                    let [h, m] = popStartTime.split(':').map(Number);
+                    let d = new Date();
+                    d.setHours(h, m + 90);
+                    $('#popover-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                    
+                    if (d.getHours() < h) { // Wrap qua ngày mới
+                        let ed = new Date(popStartDate); ed.setDate(ed.getDate() + 1);
+                        $('#popover-end-date').val(ed.toISOString().split('T')[0]).show();
+                    } else {
+                        $('#popover-end-date').val(popStartDate).hide();
+                    }
+                } else {
+                    $('#popover-end-date').val(popStartDate).hide();
+                }
+            }
+        }
+
+        // Cho Full Screen Modal
+        let fsStartDate = $('#fs-start-date').val();
+        let fsEndDate = $('#fs-end-date').val();
+        let fsStartTime = $('#fs-start-time').val();
+        let fsEndTime = $('#fs-end-time').val();
+
+        if (fsStartTime && fsEndTime) {
+            let [startH] = fsStartTime.split(':').map(Number);
+            let [endH] = fsEndTime.split(':').map(Number);
+
+            if (fsStartDate === fsEndDate && startH >= 18 && endH <= 11) {
+                let d = new Date(fsStartDate);
+                d.setDate(d.getDate() + 1);
+                $('#fs-end-date').val(d.toISOString().split('T')[0]);
+            } else if (fsStartDate === fsEndDate && fsStartTime > fsEndTime) {
+                let [h, m] = fsStartTime.split(':').map(Number);
+                let d = new Date();
+                d.setHours(h, m + 90);
+                $('#fs-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                if (d.getHours() < h) {
+                    let ed = new Date(fsStartDate); ed.setDate(ed.getDate() + 1);
+                    $('#fs-end-date').val(ed.toISOString().split('T')[0]);
+                }
+            }
+        }
+        
+        // Luôn cập nhật min attribute cho HTML5 picker
+        if (fsStartDate === fsEndDate) $('#fs-end-time').attr('min', fsStartTime);
+        else $('#fs-end-time').removeAttr('min');
+        
+        if ($('#popover-start-date').val() === $('#popover-end-date').val()) $('#popover-end-time').attr('min', popStartTime);
+        else $('#popover-end-time').removeAttr('min');
+    }
+
+    $(document).on('change', '#popover-start-time', syncEndTimeMin);
+    $(document).on('change', '#fs-start-time, #fs-start-date, #fs-end-date', syncEndTimeMin);
+
+    // Kiểm tra trực tiếp khi người dùng thay đổi ô Giờ kết thúc
+    $(document).on('change', '#popover-end-time, #fs-end-time', function () {
+        let isFs = $(this).attr('id').startsWith('fs');
+        let startId = isFs ? '#fs-start-time' : '#popover-start-time';
+        let startTime = $(startId).val();
+        let endTime = $(this).val();
+
+        // Nếu là Full Screen, chỉ kiểm tra nếu cùng ngày
+        if (isFs && $('#fs-start-date').val() !== $('#fs-end-date').val()) return;
+
+        if (startTime && endTime && startTime > endTime) {
+            // Nếu giờ kết thúc < giờ bắt đầu -> Tự động cộng thêm 90 phút
+            let [h, m] = startTime.split(':').map(Number);
+            let d = new Date();
+            d.setHours(h, m + 90);
+            $(this).val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+        }
+    });
+
+    // Xuất hàm ra global để dùng trong các handler khác nếu cần
+    window.syncEndTimeMin = syncEndTimeMin;
 });
 
 // ==========================================
@@ -189,7 +285,7 @@ function renderMainCalendar() {
         let d = new Date(startDate);
         d.setDate(startDate.getDate() + i);
 
-        let dateStr = d.toISOString().split('T')[0];
+        let dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         let isToday = new Date().toDateString() === d.toDateString();
         let activeClass = isToday ? 'active' : '';
 
@@ -294,53 +390,80 @@ function loadAppointments() {
             // Xóa các sự kiện cũ trên UI
             $('.appointment-block').remove();
 
-            // TIẾN HÀNH VẼ TRỰC TIẾP HTML RA LỊCH (Không chia cột nữa)
             data.forEach(function (evt) {
-                let dateStr = evt.start.split('T')[0];
-                let startDate = new Date(evt.start);
-                let endDate = new Date(evt.end);
+                let start = new Date(evt.start);
+                let end = new Date(evt.end);
 
-                let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
-                let durationMins = (endDate - startDate) / (1000 * 60);
-                let heightPx = durationMins > 0 ? durationMins : 60;
+                // Lặp qua từng ngày mà sự kiện bao phủ
+                let currentDay = new Date(start);
+                currentDay.setHours(0, 0, 0, 0);
 
-                let $column = $(`.day-col[data-date='${dateStr}']`);
+                let endDay = new Date(end);
+                endDay.setHours(0, 0, 0, 0);
 
-                if ($column.length > 0) {
-                    let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-                        " - " + endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                while (currentDay <= endDay) {
+                    let dateStr = currentDay.getFullYear() + '-' + String(currentDay.getMonth() + 1).padStart(2, '0') + '-' + String(currentDay.getDate()).padStart(2, '0');
+                    let $column = $(`.day-col[data-date='${dateStr}']`);
 
-                    let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
-                    let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
-                    let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
-                    let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                    if ($column.length > 0) {
+                        let topPx = 0;
+                        let heightPx = 1440; // Mặc định là cả ngày
 
-                    // Cấu trúc HTML Khối sự kiện (Mặc định cố định width 95% và left 0)
-                    let blockHtml = `
-                        <div class="appointment-block p-1 text-white rounded shadow-sm" 
-                             data-id="${evt.id}" 
-                             data-title="${evt.title || '(No title)'}"
-                             data-notification="${evt.notification || '30 minutes before'}"
-                             data-start="${evt.start}"
-                             data-end="${evt.end}"
-                             data-color="${evt.color}"
-                             data-location="${locHtmlStr}"
-                             data-description="${descStr}"
-                             data-guests="${guestsJson}"
-                             data-visibility="${evt.visibility}"
-                             data-teamid="${evt.teamId || ''}"
-                             data-teamname="${evt.teamName || ''}"
-                             data-owneremail="${evt.ownerEmail || ''}"
-                             draggable="true" 
-                             style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
-                            <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
-                            <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
-                                ${timeString} ${locString}
-                            </div>
-                            <div class="resize-handle"></div>
-                        </div>
-                    `;
-                    $column.append(blockHtml);
+                        // Nếu là ngày bắt đầu
+                        if (currentDay.toDateString() === start.toDateString()) {
+                            topPx = (start.getHours() * 60) + start.getMinutes();
+                            heightPx = 1440 - topPx;
+                        }
+
+                        // Nếu là ngày kết thúc
+                        if (currentDay.toDateString() === end.toDateString()) {
+                            let endMins = (end.getHours() * 60) + end.getMinutes();
+                            if (currentDay.toDateString() === start.toDateString()) {
+                                heightPx = endMins - topPx;
+                            } else {
+                                topPx = 0;
+                                heightPx = endMins;
+                            }
+                        }
+
+                        // Không vẽ nếu chiều cao <= 0 (vd: kết thúc đúng 00:00 ngày hôm sau)
+                        if (heightPx > 0) {
+                            let timeString = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                                " - " + end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                            let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+                            let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
+                            let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
+                            let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+
+                            let blockHtml = `
+                                <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                                     data-id="${evt.id}" 
+                                     data-title="${evt.title || '(No title)'}"
+                                     data-notification="${evt.notification || '30 minutes before'}"
+                                     data-start="${evt.start}"
+                                     data-end="${evt.end}"
+                                     data-color="${evt.color}"
+                                     data-location="${locHtmlStr}"
+                                     data-description="${descStr}"
+                                     data-guests="${guestsJson}"
+                                     data-visibility="${evt.visibility}"
+                                     data-teamid="${evt.teamId || ''}"
+                                     data-teamname="${evt.teamName || ''}"
+                                     data-owneremail="${evt.ownerEmail || ''}"
+                                     draggable="true" 
+                                     style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden;">
+                                    <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
+                                    <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                                        ${timeString} ${locString}
+                                    </div>
+                                    <div class="resize-handle"></div>
+                                </div>
+                            `;
+                            $column.append(blockHtml);
+                        }
+                    }
+                    currentDay.setDate(currentDay.getDate() + 1);
                 }
             });
 
@@ -642,8 +765,10 @@ $(document).ready(function () {
         });
 
         $('#popover-start-date').val(dateStr);
+        $('#popover-end-date').val(dateStr).hide(); 
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
         $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+        syncEndTimeMin();
 
         // Reset visibility dropdown
         $('#popover-visibility').val('0');
@@ -792,7 +917,13 @@ $(document).ready(function () {
         let end = new Date(endStr);
         let dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
         let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-        let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)} - ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        
+        let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)}`;
+        if (start.toDateString() === end.toDateString()) {
+            timeStr += ` - ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        } else {
+            timeStr += ` - ${end.toLocaleDateString('en-US', dateOptions)} • ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        }
 
         $('#detail-title').text(title);
         $('#detail-time').text(timeStr);
@@ -1043,7 +1174,7 @@ $(document).ready(function () {
         let endTimeVal = $('#popover-end-time').val();
 
         let finalStart = new Date(`${startDateVal}T${startTimeVal}:00`);
-        let finalEnd = new Date(`${startDateVal}T${endTimeVal}:00`);
+        let finalEnd = new Date(`${$('#popover-end-date').val()}T${endTimeVal}:00`);
         let selectedNotification = $('#notification-list select').first().val() || "30 minutes before";
 
         let appointmentData = {
@@ -1284,6 +1415,7 @@ $(document).on('click', '#btn-create-event', function (e) {
 
     // 3. Đổ dữ liệu thời gian vào các ô input
     $('#popover-start-date').val(dateStr);
+    $('#popover-end-date').val(dateStr).hide(); // Mặc định ẩn ngày kết thúc
     $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
     $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
 
@@ -1299,6 +1431,7 @@ $(document).on('click', '#btn-create-event', function (e) {
     $colorSelect.off('change').on('change', function () {
         $(this).css('color', $(this).val());
     });
+    syncEndTimeMin();
 
     // 5. Căn chỉnh vị trí popover (hiển thị chếch sang phải nút Create của sidebar)
     let $container = $(this).closest('.create-button-container');
@@ -1440,6 +1573,7 @@ $(document).on('click', '#btn-more-options', function (e) {
     renderFsGuests();
 
     $('#event-popover').hide();
+    syncEndTimeMin();
     $('#fullScreenEventModal').modal('show');
 });
 
@@ -1456,8 +1590,8 @@ $(document).on('click', '#btn-edit-event', function (e) {
     let title = $block.data('title');
     $('#fs-title').val(title === '(No title)' ? '' : title);
 
-    $('#fs-start-date').val(start.toISOString().split('T')[0]);
-    $('#fs-end-date').val(end.toISOString().split('T')[0]);
+    $('#fs-start-date').val(start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0'));
+    $('#fs-end-date').val(end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0'));
     $('#fs-start-time').val(`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`);
     $('#fs-end-time').val(`${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`);
 
@@ -1496,6 +1630,7 @@ $(document).on('click', '#btn-edit-event', function (e) {
     // Ẩn Popover detail và mở modal
     $('#event-detail-popover').hide();
     $('.calendar-body-scroll').css('overflow', 'auto');
+    syncEndTimeMin();
     $('#fullScreenEventModal').modal('show');
 });
 
