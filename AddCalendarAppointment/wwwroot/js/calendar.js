@@ -1151,11 +1151,13 @@ $(document).ready(function () {
         $('.calendar-body-scroll').css('overflow', 'auto');
     });
 
-    // Accept/Deny Handlers for Pending Guests
-    $('#btn-accept-invite').on('click', function() {
-        let id = $(this).data('id');
-        $.post('/api/Appointment/accept/' + id, function(res) {
-            if (res.success) {
+    function acceptInvitation(id, overwriteOverlap = false) {
+        $.post('/api/Appointment/accept/' + id + '?overwriteOverlap=' + overwriteOverlap, function(res) {
+            if (res.isOverlap) {
+                if (confirm(res.message)) {
+                    acceptInvitation(id, true);
+                }
+            } else if (res.success) {
                 $('#event-detail-popover').hide();
                 $('.calendar-body-scroll').css('overflow', 'auto');
                 loadAppointments();
@@ -1163,6 +1165,11 @@ $(document).ready(function () {
                 alert("Lỗi: " + res.message);
             }
         });
+    }
+
+    $('#btn-accept-invite').on('click', function() {
+        let id = $(this).data('id');
+        acceptInvitation(id);
     });
 
     $('#btn-deny-invite').on('click', function() {
