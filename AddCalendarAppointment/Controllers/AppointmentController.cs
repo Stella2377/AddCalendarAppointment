@@ -488,7 +488,7 @@ namespace AddCalendarAppointment.Controllers
 
         // 2. Thêm API xử lý việc Update
         [HttpPost("update")]
-        public async Task<IActionResult> Update([FromBody] UpdateAppointmentRequest req)
+        public async Task<IActionResult>    Update([FromBody] UpdateAppointmentRequest req)
         {
             try
             {

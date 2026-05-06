@@ -174,8 +174,8 @@ $(document).ready(function () {
             let [startH] = popStartTime.split(':').map(Number);
             let [endH] = popEndTime.split(':').map(Number);
 
-            // Logic Chiều tối (>=18h) -> Sáng hôm sau (<=11h)
-            if (startH >= 18 && endH <= 11) {
+            // Logic PM -> AM sáng hôm sau
+            if (startH >= 12 && endH < 12) {
                 let d = new Date(popStartDate);
                 d.setDate(d.getDate() + 1);
                 let edStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -210,7 +210,7 @@ $(document).ready(function () {
             let [startH] = fsStartTime.split(':').map(Number);
             let [endH] = fsEndTime.split(':').map(Number);
 
-            if (fsStartDate === fsEndDate && startH >= 18 && endH <= 11) {
+            if (fsStartDate === fsEndDate && startH >= 12 && endH < 12) {
                 let d = new Date(fsStartDate);
                 d.setDate(d.getDate() + 1);
                 $('#fs-end-date').val(d.toISOString().split('T')[0]);
@@ -234,8 +234,8 @@ $(document).ready(function () {
         else $('#popover-end-time').removeAttr('min');
     }
 
-    $(document).on('change', '#popover-start-time', syncEndTimeMin);
-    $(document).on('change', '#fs-start-time, #fs-start-date, #fs-end-date', syncEndTimeMin);
+    $(document).on('change', '#popover-start-time, #popover-end-time', syncEndTimeMin);
+    $(document).on('change', '#fs-start-time, #fs-start-date, #fs-end-date, #fs-end-time', syncEndTimeMin);
 
     // Kiểm tra trực tiếp khi người dùng thay đổi ô Giờ kết thúc
     $(document).on('change', '#popover-end-time, #fs-end-time', function () {
@@ -248,12 +248,18 @@ $(document).ready(function () {
         if (isFs && $('#fs-start-date').val() !== $('#fs-end-date').val()) return;
 
         if (startTime && endTime && startTime > endTime) {
-            // Nếu giờ kết thúc < giờ bắt đầu -> Tự động cộng thêm 90 phút
-            let [h, m] = startTime.split(':').map(Number);
-            let d = new Date();
-            d.setHours(h, m + 90);
-            $(this).val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+            let [startH] = startTime.split(':').map(Number);
+            let [endH] = endTime.split(':').map(Number);
+
+            // Nếu không phải trường hợp PM -> AM (qua đêm), thì mới ép cộng 90p
+            if (!(startH >= 12 && endH < 12)) {
+                let [h, m] = startTime.split(':').map(Number);
+                let d = new Date();
+                d.setHours(h, m + 90);
+                $(this).val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+            }
         }
+        syncEndTimeMin();
     });
 
     // Xuất hàm ra global để dùng trong các handler khác nếu cần
@@ -390,101 +396,157 @@ function loadAppointments() {
             // Xóa các sự kiện cũ trên UI
             $('.appointment-block').remove();
 
+            // 1. Thu thập tất cả các phân đoạn (segments) của cuộc hẹn theo từng cột ngày
+            let segmentsByColumn = {};
+
             data.forEach(function (evt) {
                 let start = new Date(evt.start);
                 let end = new Date(evt.end);
 
-                // Lặp qua từng ngày mà sự kiện bao phủ
                 let currentDay = new Date(start);
                 currentDay.setHours(0, 0, 0, 0);
-
                 let endDay = new Date(end);
                 endDay.setHours(0, 0, 0, 0);
 
                 while (currentDay <= endDay) {
                     let dateStr = currentDay.getFullYear() + '-' + String(currentDay.getMonth() + 1).padStart(2, '0') + '-' + String(currentDay.getDate()).padStart(2, '0');
-                    let $column = $(`.day-col[data-date='${dateStr}']`);
+                    
+                    let topPx = 0;
+                    let heightPx = 1440;
 
-                    if ($column.length > 0) {
-                        let topPx = 0;
-                        let heightPx = 1440; // Mặc định là cả ngày
+                    if (currentDay.toDateString() === start.toDateString()) {
+                        topPx = (start.getHours() * 60) + start.getMinutes();
+                        heightPx = 1440 - topPx;
+                    }
 
-                        // Nếu là ngày bắt đầu
+                    if (currentDay.toDateString() === end.toDateString()) {
+                        let endMins = (end.getHours() * 60) + end.getMinutes();
                         if (currentDay.toDateString() === start.toDateString()) {
-                            topPx = (start.getHours() * 60) + start.getMinutes();
-                            heightPx = 1440 - topPx;
+                            heightPx = endMins - topPx;
+                        } else {
+                            topPx = 0;
+                            heightPx = endMins;
                         }
+                    }
 
-                        // Nếu là ngày kết thúc
-                        if (currentDay.toDateString() === end.toDateString()) {
-                            let endMins = (end.getHours() * 60) + end.getMinutes();
-                            if (currentDay.toDateString() === start.toDateString()) {
-                                heightPx = endMins - topPx;
-                            } else {
-                                topPx = 0;
-                                heightPx = endMins;
-                            }
-                        }
-
-                        // Không vẽ nếu chiều cao <= 0 (vd: kết thúc đúng 00:00 ngày hôm sau)
-                        if (heightPx > 0) {
-                            let timeString = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-                                " - " + end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-                            let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
-                            let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
-                            let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
-                            let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
-                            
-                            // KIỂM TRA QUYỀN VÀ KHÓA (LOCKED)
-                            let isOwner = evt.isCurrentUserOwner;
-                            let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
-                            
-                            let isLocked = false;
-                            if (!isOwner) {
-                                // Nếu không phải chủ sở hữu (là Guest) -> Luôn bị khóa (chỉ được Unjoin)
-                                isLocked = true;
-                            } else if (evt.visibility == 1 && hasOtherParticipants) {
-                                // Nếu là chủ sở hữu Group Meeting và đã có người tham gia -> Khóa thời gian/nhóm
-                                isLocked = true;
-                            }
-
-                            let draggableAttr = isLocked ? 'false' : 'true';
-                            let resizeHandleHtml = isLocked ? '' : '<div class="resize-handle"></div>';
-                            let opacityStyle = evt.guestStatus === 0 ? 'opacity: 0.5;' : '';
-
-                            let blockHtml = `
-                                <div class="appointment-block p-1 text-white rounded shadow-sm" 
-                                     data-id="${evt.id}" 
-                                     data-title="${evt.title || '(No title)'}"
-                                     data-notification="${evt.notification || '30 minutes before'}"
-                                     data-start="${evt.start}"
-                                     data-end="${evt.end}"
-                                     data-color="${evt.color}"
-                                     data-location="${locHtmlStr}"
-                                     data-description="${descStr}"
-                                     data-guests="${guestsJson}"
-                                     data-visibility="${evt.visibility}"
-                                     data-teamid="${evt.teamId || ''}"
-                                     data-teamname="${evt.teamName || ''}"
-                                     data-owneremail="${evt.ownerEmail || ''}"
-                                     data-isowner="${evt.isCurrentUserOwner}"
-                                     data-locked="${isLocked}"
-                                     data-gueststatus="${evt.guestStatus}"
-                                     draggable="${draggableAttr}" 
-                                     style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden; ${opacityStyle}">
-                                    <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
-                                    <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
-                                        ${timeString} ${locString}
-                                    </div>
-                                    ${resizeHandleHtml}
-                                </div>
-                            `;
-                            $column.append(blockHtml);
-                        }
+                    if (heightPx > 0) {
+                        if (!segmentsByColumn[dateStr]) segmentsByColumn[dateStr] = [];
+                        segmentsByColumn[dateStr].push({
+                            evt: evt,
+                            topPx: topPx,
+                            heightPx: heightPx,
+                            startTime: start,
+                            endTime: end
+                        });
                     }
                     currentDay.setDate(currentDay.getDate() + 1);
                 }
+            });
+
+            // 2. Xử lý hiển thị từng cột (xử lý chồng lấn)
+            Object.keys(segmentsByColumn).forEach(dateStr => {
+                let $column = $(`.day-col[data-date='${dateStr}']`);
+                if ($column.length === 0) return;
+
+                let segments = segmentsByColumn[dateStr];
+                // Sắp xếp theo thời gian bắt đầu, sau đó theo chiều cao giảm dần
+                segments.sort((a, b) => a.topPx - b.topPx || b.heightPx - a.heightPx);
+
+                // Gom nhóm các sự kiện có khả năng chồng lấn (clusters)
+                let clusters = [];
+                let currentCluster = null;
+                let maxEndInCluster = -1;
+
+                segments.forEach(seg => {
+                    if (!currentCluster || seg.topPx >= maxEndInCluster) {
+                        currentCluster = [];
+                        clusters.push(currentCluster);
+                        maxEndInCluster = seg.topPx + seg.heightPx;
+                    } else {
+                        maxEndInCluster = Math.max(maxEndInCluster, seg.topPx + seg.heightPx);
+                    }
+                    currentCluster.push(seg);
+                });
+
+                // Phân bổ lane (cột dọc) cho từng cluster
+                clusters.forEach(cluster => {
+                    let lanes = [];
+                    cluster.forEach(seg => {
+                        let placed = false;
+                        for (let i = 0; i < lanes.length; i++) {
+                            let lastInLane = lanes[i][lanes[i].length - 1];
+                            if (seg.topPx >= lastInLane.topPx + lastInLane.heightPx) {
+                                lanes[i].push(seg);
+                                seg.laneIndex = i;
+                                placed = true;
+                                break;
+                            }
+                        }
+                        if (!placed) {
+                            seg.laneIndex = lanes.length;
+                            lanes.push([seg]);
+                        }
+                    });
+
+                    let laneCount = lanes.length;
+                    cluster.forEach(seg => {
+                        let widthPercent = 100 / laneCount;
+                        let leftPercent = seg.laneIndex * widthPercent;
+                        
+                        // Render HTML
+                        let evt = seg.evt;
+                        let timeString = seg.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                            " - " + seg.endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                        let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+                        let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
+                        let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
+                        let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                        
+                        let isOwner = evt.isCurrentUserOwner;
+                        let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                        
+                        let isLocked = false;
+                        if (!isOwner) {
+                            isLocked = true;
+                        } else if (evt.visibility == 1 && hasOtherParticipants) {
+                            isLocked = true;
+                        }
+
+                        let draggableAttr = isLocked ? 'false' : 'true';
+                        let resizeHandleHtml = isLocked ? '' : '<div class="resize-handle"></div>';
+                        let opacityStyle = evt.guestStatus === 0 ? 'opacity: 0.5;' : '';
+
+                        let blockHtml = `
+                            <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                                 data-id="${evt.id}" 
+                                 data-title="${evt.title || '(No title)'}"
+                                 data-notification="${evt.notification || '30 minutes before'}"
+                                 data-start="${evt.start}"
+                                 data-end="${evt.end}"
+                                 data-color="${evt.color}"
+                                 data-location="${locHtmlStr}"
+                                 data-description="${descStr}"
+                                 data-guests="${guestsJson}"
+                                 data-visibility="${evt.visibility}"
+                                 data-teamid="${evt.teamId || ''}"
+                                 data-teamname="${evt.teamName || ''}"
+                                 data-owneremail="${evt.ownerEmail || ''}"
+                                 data-isowner="${evt.isCurrentUserOwner}"
+                                 data-locked="${isLocked}"
+                                 data-gueststatus="${evt.guestStatus}"
+                                 draggable="${draggableAttr}" 
+                                 style="position: absolute; top: ${seg.topPx}px; height: ${seg.heightPx}px; width: ${widthPercent - 1}%; left: ${leftPercent}%; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden; ${opacityStyle}">
+                                <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
+                                <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                                    ${timeString} ${locString}
+                                </div>
+                                ${resizeHandleHtml}
+                            </div>
+                        `;
+                        $column.append(blockHtml);
+                    });
+                });
             });
 
             applyColorFilter();
