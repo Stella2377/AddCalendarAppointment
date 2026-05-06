@@ -404,18 +404,22 @@
             
             if (meeting.participants && meeting.participants.length > 0) {
                 pCount.innerText = `${meeting.participants.length} participant${meeting.participants.length > 1 ? 's' : ''}`;
-                meeting.participants.forEach(email => {
-                    const firstLetter = email.charAt(0).toUpperCase();
+                meeting.participants.forEach(p => {
+                    const firstLetter = p.email.charAt(0).toUpperCase();
                     // Đánh dấu Organizer nếu trùng email
-                    let roleTag = (email === meeting.ownerEmail) ? ' <span class="text-muted small">(Organizer)</span>' : '';
+                    let roleTag = (p.email === meeting.ownerEmail) ? ' <span class="text-muted small">(Organizer)</span>' : '';
+                    
+                    // Thêm tag Pending và làm mờ nếu status == 0
+                    let statusTag = (p.status === 0) ? ' <span class="badge bg-light text-muted border ms-1" style="font-size: 10px;">Pending</span>' : '';
+                    let opacityStyle = (p.status === 0) ? 'opacity: 0.6;' : '';
                     
                     pList.innerHTML += `
-                        <div class="d-flex align-items-center mb-2">
+                        <div class="d-flex align-items-center mb-2" style="${opacityStyle}">
                             <div style="width: 28px; height: 28px; border-radius: 50%; background-color: #e8eaed; color: #5f6368; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; margin-right: 10px;">
                                 ${firstLetter}
                             </div>
                             <div style="font-size: 14px; color: #3c4043;">
-                                ${email}${roleTag}
+                                ${p.email}${roleTag}${statusTag}
                             </div>
                         </div>`;
                 });

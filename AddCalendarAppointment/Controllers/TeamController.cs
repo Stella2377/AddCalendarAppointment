@@ -84,8 +84,12 @@ namespace AddCalendarAppointment.Controllers
                     notification = a.Notification ?? "30 minutes before",
                     isJoined = a.Guests != null && a.Guests.Any(g => g.UserId == currentUserId),
                     participants = (a.Guests != null 
-                        ? new[] { a.Owner.Email }.Concat(a.Guests.Select(g => g.User.Email)).Distinct().ToList()
-                        : new List<string> { a.Owner.Email })
+                        ? new[] { new { email = a.Owner.Email, status = 1 } }
+                          .Concat(a.Guests.Select(g => new { email = g.User.Email, status = (int)g.Status }))
+                          .GroupBy(x => x.email)
+                          .Select(g => g.OrderByDescending(x => x.status).First()) // Ưu tiên Accepted nếu trùng
+                          .ToList()
+                        : (object)new List<object> { new { email = a.Owner.Email, status = 1 } })
                 }).ToList();
 
             return Json(new
