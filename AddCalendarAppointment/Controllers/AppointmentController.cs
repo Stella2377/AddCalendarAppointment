@@ -102,16 +102,16 @@ namespace AddCalendarAppointment.Controllers
                 }
                 else
                 {
-                    // Nếu người dùng chọn "Thay thế" -> Xóa (nếu Private) hoặc Rời khỏi (nếu Public)
+                    // Nếu người dùng chọn "Thay thế" -> Xóa (nếu là Owner) hoặc Rời khỏi (nếu là Guest)
                     foreach (var oldAppt in overlaps)
                     {
-                        if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                        if (oldAppt.OwnerId == userId)
                         {
                             await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                         }
                         else
                         {
-                            // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                            // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                             var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                             if (guest != null)
                             {
@@ -289,13 +289,13 @@ namespace AddCalendarAppointment.Controllers
                     {
                         foreach (var oldAppt in overlaps)
                         {
-                            if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                            if (oldAppt.OwnerId == userId)
                             {
                                 await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                             }
                             else
                             {
-                                // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                                // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                                 var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                                 if (guest != null)
                                 {
@@ -514,13 +514,13 @@ namespace AddCalendarAppointment.Controllers
                         // Nếu đồng ý "Thay thế" -> Xóa hoặc Rời khỏi lịch bị trùng
                         foreach (var oldAppt in overlaps)
                         {
-                            if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                            if (oldAppt.OwnerId == userId)
                             {
                                 await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                             }
                             else
                             {
-                                // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                                // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                                 var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                                 if (guest != null)
                                 {
@@ -653,7 +653,7 @@ namespace AddCalendarAppointment.Controllers
         }
 
         [HttpPost("accept/{id}")]
-        public async Task<IActionResult> Accept(Guid id)
+        public async Task<IActionResult> Accept(Guid id, [FromQuery] bool overwriteOverlap = false)
         {
             try
             {
@@ -668,6 +668,41 @@ namespace AddCalendarAppointment.Controllers
                 var guest = targetMeeting.Guests.FirstOrDefault(g => g.UserId == userId);
                 if (guest != null)
                 {
+                    // --- KIỂM TRA TRÙNG LỊCH TRƯỚC KHI ACCEPT ---
+                    var overlaps = await _context.Appointments
+                        .Include(a => a.Guests)
+                        .Where(a => !a.IsDeleted
+                                 && a.Id != id
+                                 && (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId && g.Status == GuestStatus.Accepted))
+                                 && a.StartTime < targetMeeting.EndTime && a.EndTime > targetMeeting.StartTime)
+                        .ToListAsync();
+
+                    if (overlaps.Any())
+                    {
+                        if (!overwriteOverlap)
+                        {
+                            return Ok(new { success = false, isOverlap = true, message = "Thời gian này đã có lịch. Bạn có muốn thay thế lịch cũ không?" });
+                        }
+                        else
+                        {
+                            foreach (var oldAppt in overlaps)
+                            {
+                                if (oldAppt.OwnerId == userId)
+                                {
+                                    await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
+                                }
+                                else
+                                {
+                                    var g = oldAppt.Guests.FirstOrDefault(x => x.UserId == userId);
+                                    if (g != null)
+                                    {
+                                        _context.AppointmentGuests.Remove(g);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     guest.Status = GuestStatus.Accepted;
                     await _context.SaveChangesAsync();
                     return Ok(new { success = true });
