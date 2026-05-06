@@ -10,10 +10,10 @@
     <!-- Tiêu đề và nút Tạo nhóm -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="h4 mb-0 text-dark">
-            <i class="fa-solid fa-users text-primary me-2"></i> Danh sách nhóm của tôi
+            <i class="fa-solid fa-users text-primary me-2"></i> My Teams
         </h3>
         <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createTeamModal">
-            <i class="fa-solid fa-plus me-1"></i> Tạo nhóm mới
+            <i class="fa-solid fa-plus me-1"></i> Create New Team
         </button>
     </div>
 
@@ -24,7 +24,7 @@
     {
         <div class="alert alert-info text-center py-5" role="alert">
             <i class="fa-solid fa-circle-info fs-3 mb-2"></i><br />
-            Bạn chưa tham gia nhóm nào. Hãy tạo nhóm mới hoặc chờ người khác mời nhé!
+            You haven't joined any teams yet. Create a new team or wait for an invitation!
         </div>
     }
     else
@@ -46,36 +46,42 @@
                                             <!-- Nút Thêm thành viên -->
                                             <li>
                                                 <button class="dropdown-item text-success" onclick="openAddMemberModal('@team.Id')">
-                                                    <i class="fa-solid fa-user-plus me-2"></i> Thêm thành viên
+                                                    <i class="fa-solid fa-user-plus me-2"></i> Add Member
                                                 </button>
                                             </li>
                                             <!-- Nút Chuyển quyền (Chỉ hiện nếu đang là trưởng nhóm) -->
                                             <li>
                                                     <button class="dropdown-item text-warning" onclick="openTransferModal('@team.Id')">
-                                                        <i class="fa-solid fa-crown me-2"></i> Chuyển quyền
+                                                        <i class="fa-solid fa-crown me-2"></i> Transfer Ownership
                                                     </button>
                                                 </li>
+                                            <!-- Nút Xóa nhóm (Chỉ hiện nếu đang là trưởng nhóm) -->
+                                            <li>
+                                                <button class="dropdown-item text-danger" onclick="deleteTeam('@team.Id')">
+                                                    <i class="fa-solid fa-trash-can me-2"></i> Delete Team
+                                                </button>
+                                            </li>
                                             <li><hr class="dropdown-divider"></li>
                                         }
                                  
                                         <li>
                                             <button class="dropdown-item text-danger" onclick="leaveTeam('@team.Id')">
-                                                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Rời nhóm
+                                                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Leave Team
                                             </button>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
                             <p class="card-text text-muted small mt-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                @(string.IsNullOrEmpty(team.Description) ? "Không có mô tả" : team.Description)
+                                @(string.IsNullOrEmpty(team.Description) ? "No description" : team.Description)
                             </p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 pt-0 pb-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="badge bg-light text-secondary border rounded-pill px-2 py-1">
-                                    <i class="fa-solid fa-user me-1"></i> @team.Members.Count thành viên
+                                    <i class="fa-solid fa-user me-1"></i> @team.Members.Count members
                                 </span>
-                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="showTeamDetails('@team.Id')">Chi tiết</button>
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="showTeamDetails('@team.Id')">Details</button>
                             </div>
                         </div>
                     </div>
@@ -90,30 +96,30 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Tạo nhóm mới</h5>
+                <h5 class="modal-title">Create New Team</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="/Team/CreateTeam" method="post">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Tên nhóm</label>
+                        <label class="form-label">Team Name</label>
                         <input type="text" class="form-control" name="teamName" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Mô tả (Tùy chọn)</label>
+                        <label class="form-label">Description (Optional)</label>
                         <textarea class="form-control" name="description" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Thêm thành viên</label>
+                        <label class="form-label">Add Members</label>
                         <textarea class="form-control" name="memberEmails" rows="2" ></textarea>
                         <div class="form-text text-muted" style="font-size: 0.8rem;">
-                            Nhập các email cách nhau bằng dấu phẩy (,). Các email đã có tài khoản trên hệ thống sẽ tự động được thêm vào nhóm.
+                            Enter emails separated by commas (,). Users with existing accounts will be added automatically.
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary">Tạo nhóm</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Team</button>
                 </div>
             </form>
         </div>
@@ -125,13 +131,13 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="detailTeamName">Chi tiết nhóm</h5>
+                <h5 class="modal-title" id="detailTeamName">Team Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-6 border-end">
-                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-users me-2"></i>Danh sách thành viên:</h6>
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-users me-2"></i>Members List:</h6>
                         <ul class="list-group list-group-flush" id="memberList">
                             <!-- Danh sách thành viên -->
                         </ul>
@@ -153,16 +159,16 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Thêm thành viên vào nhóm</h5>
+                <h5 class="modal-title">Add Members to Team</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="addMemberTeamId" />
-                <input type="email" id="memberEmail" class="form-control" placeholder="Nhập email thành viên..." required />
+                <input type="email" id="memberEmail" class="form-control" placeholder="Enter member email..." required />
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddMember()">Thêm</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddMember()">Add</button>
             </div>
         </div>
     </div>
@@ -237,18 +243,18 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Chuyển quyền trưởng nhóm</h5>
+                <h5 class="modal-title">Transfer Ownership</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="transferTeamId" />
-                <label class="form-label">Email của trưởng nhóm mới</label>
+                <label class="form-label">New Owner Email</label>
                 <input type="email" class="form-control" id="transferEmail" />
-                <div class="form-text text-danger mt-2">Lưu ý: Sau khi chuyển quyền, bạn sẽ trở thành thành viên bình thường.</div>
+                <div class="form-text text-danger mt-2">Note: After transferring, you will become a regular member.</div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-warning" onclick="submitTransfer()">Chuyển quyền</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitTransfer()">Transfer</button>
             </div>
         </div>
     </div>
@@ -281,13 +287,13 @@
 
                     data.members.forEach(member => {
                         let roleBadge = member.role === "Trưởng nhóm"
-                            ? '<span class="badge bg-primary">Trưởng nhóm</span>'
-                            : '<span class="badge bg-secondary">Thành viên</span>';
+                            ? '<span class="badge bg-primary">Leader</span>'
+                            : '<span class="badge bg-secondary">Member</span>';
 
                         let deleteBtn = '';
                         if (isCurrentUserOwner && member.id !== data.ownerId) {
                             deleteBtn = `<i class="fa-solid fa-trash-can text-danger ms-3" style="cursor:pointer;"
-                                                    title="Xóa thành viên" onclick="removeMember('${teamId}', '${member.id}')"></i>`;
+                                                    title="Remove member" onclick="removeMember('${teamId}', '${member.id}')"></i>`;
                         }
 
                         memberList.innerHTML += `
@@ -310,7 +316,7 @@
                         data.groupMeetings.forEach(meeting => {
                             let joinBtn = '';
                             if (data.currentUserId === meeting.creatorId) {
-                                joinBtn = `<span class="badge bg-light text-dark border">Của bạn</span>`;
+                                joinBtn = `<span class="badge bg-light text-dark border">Yours</span>`;
                             } else if (meeting.isJoined) {
                                 joinBtn = `<span class="text-muted small fw-bold" style="opacity: 0.6;"><i class="fa-solid fa-check me-1"></i>Joined</span>`;
                             } else {
@@ -504,6 +510,25 @@
                             alert(data.message);
                         }
                     });
+            }
+        }
+
+        // 3. Xử lý khi bấm nút "Xóa nhóm" (Chỉ trưởng nhóm)
+        function deleteTeam(teamId) {
+            if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhóm này không? Tất cả các cuộc họp nhóm liên quan cũng sẽ bị ảnh hưởng.')) {
+                fetch(`/Team/DeleteTeam?teamId=${teamId}`, {
+                    method: 'POST'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Đã xóa nhóm thành công!');
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => console.error('Lỗi:', error));
             }
         }
     </script>
