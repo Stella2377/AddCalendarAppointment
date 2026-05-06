@@ -305,6 +305,9 @@ function renderMainCalendar() {
     if (typeof loadAppointments === "function") {
         loadAppointments();
     }
+    if (typeof updateCurrentTimeIndicator === "function") {
+        updateCurrentTimeIndicator();
+    }
 }
 
 // ==========================================
@@ -1974,3 +1977,34 @@ $(document).on('change', '#fs-visibility', function () {
         $dropdown.empty().append('<option value="">-- Select Team --</option>');
     }
 });
+
+// ==========================================
+// HIỂN THỊ THANH THỜI GIAN THỰC (CURRENT TIME INDICATOR)
+// ==========================================
+function updateCurrentTimeIndicator() {
+    let now = new Date();
+    // Chuyển đổi ngày hiện tại thành chuỗi YYYY-MM-DD để tìm cột
+    let dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    // Tìm cột của ngày hôm nay trong lưới lịch
+    let $todayCol = $(`.day-col[data-date='${dateStr}']`);
+
+    // Xóa thanh đỏ cũ nếu đang tồn tại (để reset vị trí hoặc tự động nhảy khi qua ngày mới)
+    $('.current-time-indicator').remove();
+
+    // Nếu cột của ngày hôm nay đang hiển thị trên màn hình
+    if ($todayCol.length > 0) {
+        // Tính toán tọa độ Y: 1 giờ = 60px, 1 phút = 1px
+        let topPx = (now.getHours() * 60) + now.getMinutes();
+
+        // Vẽ thanh đỏ
+        let $indicator = $('<div class="current-time-indicator"></div>').css('top', topPx + 'px');
+        $todayCol.append($indicator);
+    }
+}
+
+// Gọi hàm cập nhật ngay lập tức khi load xong JS
+updateCurrentTimeIndicator();
+
+// Thiết lập tự động chạy lại hàm này mỗi 60 giây (60000 ms) mà không cần reload trang
+setInterval(updateCurrentTimeIndicator, 60000);

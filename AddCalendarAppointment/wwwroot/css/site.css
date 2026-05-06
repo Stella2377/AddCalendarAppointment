@@ -339,3 +339,27 @@ body {
     text-align: center;
     color: #5f6368;
 }
+
+/* ==========================================
+   CSS CHO THANH THỜI GIAN THỰC (CURRENT TIME)
+   ========================================== */
+.current-time-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #ea4335; /* Màu đỏ chuẩn Google */
+    z-index: 50; /* Hiển thị đè lên lưới nhưng dưới các khối sự kiện đang kéo thả */
+    pointer-events: none; /* Không cản trở click chuột vào lưới lịch bên dưới */
+}
+
+    .current-time-indicator::before {
+        content: '';
+        position: absolute;
+        left: -6px; /* Căn giữa dấu chấm so với viền trái */
+        top: -5px; /* Căn giữa dấu chấm so với độ dày 2px của thanh ngang */
+        width: 12px;
+        height: 12px;
+        background-color: #ea4335;
+        border-radius: 50%;
+    }
