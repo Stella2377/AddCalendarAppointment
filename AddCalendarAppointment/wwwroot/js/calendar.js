@@ -1076,11 +1076,15 @@ $(document).ready(function () {
                                 $('#event-popover').hide();
                                 $('.appointment-ghost').remove();
                                 $ghostEvent = null;
+                                alert("Đã tham gia cuộc họp nhóm thành công!");
                                 loadAppointments();
                             } else {
                                 alert("Tham gia thất bại: " + joinRes.message);
                             }
                         });
+                    } else {
+                        // Người dùng nhấn Cancel từ chối Join
+                        alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
                     }
                     $('#btn-save-event').prop('disabled', false).text('Save');
                     return;
@@ -1542,11 +1546,15 @@ $('#btn-save-fs-event').on('click', function () {
                     $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
                         if (joinRes.success) {
                             $('#fullScreenEventModal').modal('hide');
+                            alert("Đã tham gia cuộc họp nhóm thành công!");
                             loadAppointments();
                         } else {
                             alert("Tham gia thất bại: " + joinRes.message);
                         }
                     });
+                } else {
+                    // Người dùng nhấn Cancel từ chối Join
+                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
                 }
                 $(this).prop('disabled', false).text('Save');
                 return;

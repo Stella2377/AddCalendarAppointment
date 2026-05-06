@@ -164,7 +164,12 @@ namespace AddCalendarAppointment.Controllers
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-                return Ok(new { suggestTeamJoin = true, appointmentId = result.suggestedAppointmentId, message = result.errorMessage });
+                return Ok(new
+                {
+                    suggestTeamJoin = true,
+                    appointmentId = result.suggestedAppointmentId,
+                    message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                });
 
             // suggestOverlapReplacement hiện đã được thay thế bằng isOverlap logic ở trên, 
             // nhưng giữ lại để tương thích nếu Service vẫn trả về.
@@ -517,7 +522,12 @@ namespace AddCalendarAppointment.Controllers
                     var teamConflict = await _appointmentService.GetTeamConflictAsync(req.TeamId.Value, req.Title, req.StartTime, req.EndTime, req.Id);
                     if (teamConflict != null)
                     {
-                        return Ok(new { suggestTeamJoin = true, appointmentId = teamConflict.Id, message = "Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?" });
+                        return Ok(new
+                        {
+                            suggestTeamJoin = true,
+                            appointmentId = teamConflict.Id,
+                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                        });
                     }
                 }
 
