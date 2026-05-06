@@ -311,6 +311,9 @@ function renderMainCalendar() {
     if (typeof loadAppointments === "function") {
         loadAppointments();
     }
+    if (typeof updateCurrentTimeIndicator === "function") {
+        updateCurrentTimeIndicator();
+    }
 }
 
 // ==========================================
@@ -1885,6 +1888,9 @@ $(document).on('click', '#btn-edit-event', function (e) {
 
 // 5. NÚT LƯU CỦA FULL SCREEN MODAL
 $('#btn-save-fs-event').on('click', function () {
+    let hiddenId = $('#fs-edit-event-id').val();
+    let activeEventId = hiddenId ? hiddenId : (typeof currentEditEventId !== 'undefined' ? currentEditEventId : null);
+    if (activeEventId === "") activeEventId = null;
     let title = $('#fs-title').val() || "(No title)";
     let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
     let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
@@ -1897,7 +1903,7 @@ $('#btn-save-fs-event').on('click', function () {
     };
 
     let appointmentData = {
-        Id: currentEditEventId, // Nếu null thì API sẽ hiểu là Create mới
+        Id: activeEventId, // Nếu null thì API sẽ hiểu là Create mới
         Title: title,
         StartTime: toLocalISOString(finalStart),
         EndTime: toLocalISOString(finalEnd),
@@ -1911,7 +1917,7 @@ $('#btn-save-fs-event').on('click', function () {
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
     };
 
-    let apiUrl = currentEditEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
+    let apiUrl = activeEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
     let httpMethod = 'POST'; // Thay đổi nếu API Update dùng PUT
 
     $(this).prop('disabled', true).text('Đang lưu...');
@@ -2033,3 +2039,34 @@ $(document).on('change', '#fs-visibility', function () {
         $dropdown.empty().append('<option value="">-- Select Team --</option>');
     }
 });
+
+// ==========================================
+// HIỂN THỊ THANH THỜI GIAN THỰC (CURRENT TIME INDICATOR)
+// ==========================================
+function updateCurrentTimeIndicator() {
+    let now = new Date();
+    // Chuyển đổi ngày hiện tại thành chuỗi YYYY-MM-DD để tìm cột
+    let dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    // Tìm cột của ngày hôm nay trong lưới lịch
+    let $todayCol = $(`.day-col[data-date='${dateStr}']`);
+
+    // Xóa thanh đỏ cũ nếu đang tồn tại (để reset vị trí hoặc tự động nhảy khi qua ngày mới)
+    $('.current-time-indicator').remove();
+
+    // Nếu cột của ngày hôm nay đang hiển thị trên màn hình
+    if ($todayCol.length > 0) {
+        // Tính toán tọa độ Y: 1 giờ = 60px, 1 phút = 1px
+        let topPx = (now.getHours() * 60) + now.getMinutes();
+
+        // Vẽ thanh đỏ
+        let $indicator = $('<div class="current-time-indicator"></div>').css('top', topPx + 'px');
+        $todayCol.append($indicator);
+    }
+}
+
+// Gọi hàm cập nhật ngay lập tức khi load xong JS
+updateCurrentTimeIndicator();
+
+// Thiết lập tự động chạy lại hàm này mỗi 60 giây (60000 ms) mà không cần reload trang
+setInterval(updateCurrentTimeIndicator, 60000);

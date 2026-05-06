@@ -164,7 +164,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="addMemberTeamId" />
-                <input type="email" id="memberEmail" class="form-control" placeholder="Enter member email..." required />
+                <input type="email" id="addMemberEmails" class="form-control" placeholder="Enter member email..." required />
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -249,7 +249,7 @@
             <div class="modal-body">
                 <input type="hidden" id="transferTeamId" />
                 <label class="form-label">New Owner Email</label>
-                <input type="email" class="form-control" id="transferEmail" />
+                <select class="form-select" id="transferEmail"></select>
                 <div class="form-text text-danger mt-2">Note: After transferring, you will become a regular member.</div>
             </div>
             <div class="modal-footer">
@@ -259,6 +259,98 @@
         </div>
     </div>
 </div>
+
+
+<!-- MODAL FULL SCREEN SỬA/TẠO SỰ KIỆN -->
+<div class="modal fade" id="fullScreenEventModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-white">
+            <input type="hidden" id="fs-edit-event-id" value="" />
+            <!-- Header -->
+            <div class="modal-header border-0 pb-0 d-flex align-items-center px-4 pt-3">
+                <button type="button" class="btn-close ms-0 me-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                <input type="text" id="fs-title" class="form-control border-0 border-bottom rounded-0 fs-3 shadow-none w-50" placeholder="Add title" style="border-color: #1a73e8 !important;">
+                <div class="ms-auto">
+                    <button class="btn btn-primary px-4 rounded-pill" id="btn-save-fs-event">Save</button>
+                </div>
+            </div>
+            
+            <!-- Body -->
+            <div class="modal-body p-4 bg-white overflow-hidden">
+                <div class="row h-100">
+                    <!-- Left Column (Event Details) -->
+                    <div class="col-md-8 pe-5 border-end overflow-auto h-100">
+                        <!-- Time Row -->
+                        <div class="d-flex align-items-center mb-4 ms-4 ps-2">
+                            <input type="date" id="fs-start-date" class="form-control form-control-sm bg-light border-0 w-auto me-2">
+                            <input type="time" id="fs-start-time" class="form-control form-control-sm bg-light border-0 w-auto me-2">
+                            <span class="me-2">to</span>
+                            <input type="time" id="fs-end-time" class="form-control form-control-sm bg-light border-0 w-auto me-2">
+                            <input type="date" id="fs-end-date" class="form-control form-control-sm bg-light border-0 w-auto me-4">
+                        </div>
+
+                        <!-- Location -->
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-map-marker-alt fs-5"></i></div>
+                            <input type="text" id="fs-location" class="form-control bg-light border-0" placeholder="Add location">
+                        </div>
+
+                        <!-- Notification -->
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-bell fs-5"></i></div>
+                            <select id="fs-notification" class="form-select bg-light border-0 w-auto">
+                                <option value="10 minutes before">10 minutes before</option>
+                                <option value="30 minutes before" selected>30 minutes before</option>
+                                <option value="1 hour before">1 hour before</option>
+                            </select>
+                        </div>
+
+                        <!-- Calendar/Owner & Status -->
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-calendar-alt fs-5"></i></div>
+                            <select id="fs-color-select" class="form-select bg-light border-0 w-auto me-3" style="font-weight: 500;"></select>
+                            
+                            <div class="text-muted me-3 ms-3" style="width: 24px; text-align: center;"><i class="fas fa-suitcase fs-5"></i></div>
+                            <select id="fs-busy-status" class="form-select bg-light border-0 w-auto me-3 text-muted">
+                                <option value="Busy">Busy</option>
+                                <option value="Free">Free</option>
+                            </select>
+                            
+                            <select id="fs-visibility" class="form-select bg-light border-0 w-auto text-muted">
+                                <option value="0">Private</option>
+                                <option value="1">Group Meeting</option>
+                            </select>
+                        </div>
+
+                        <!-- Section chọn Team cho Full Screen (mặc định ẩn) -->
+                        <div id="fs-team-selection-row" class="d-none align-items-center mb-4">
+                            <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-users fs-5"></i></div>
+                            <select id="fs-team-dropdown" class="form-select bg-light border-0 w-auto">
+                                <option value="">-- Select Team --</option>
+                            </select>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="d-flex align-items-start mb-4">
+                            <div class="text-muted me-3 mt-1" style="width: 24px; text-align: center;"><i class="fas fa-align-left fs-5"></i></div>
+                            <textarea id="fs-description" class="form-control bg-light border-0" rows="6" placeholder="Add description"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Right Column (Guests) -->
+                    <div class="col-md-4 ps-4 overflow-auto h-100">
+                        <h6 class="fw-bold mb-3">Guests</h6>
+                        <input type="email" id="fs-guests-input" class="form-control bg-light border-0 mb-3" placeholder="Add guests">
+
+                        <!-- Guest List Container -->
+                        <div id="fs-guest-list-container" class="d-flex flex-column gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Thêm chút CSS cho hiệu ứng hover thẻ Card -->
 <style>
@@ -470,44 +562,75 @@
                     }
                 });
 
-                // Logic Sửa (Mở Modal Full Screen)
-                $btnEdit.on('click', function() {
-                    bootstrap.Modal.getInstance(document.getElementById('meetingDetailModal')).hide();
-                    bootstrap.Modal.getInstance(document.getElementById('teamDetailsModal')).hide();
+             // Logic Sửa (Mở Modal Full Screen)
+            $btnEdit.on('click', function() {
+                // 1. Ép đóng 2 modal cũ bằng getOrCreateInstance để đảm bảo luôn hoạt động
+                let mModalEl = document.getElementById('meetingDetailModal');
+                let tModalEl = document.getElementById('teamDetailsModal');
+    
+                if (mModalEl) bootstrap.Modal.getOrCreateInstance(mModalEl).hide();
+                if (tModalEl) bootstrap.Modal.getOrCreateInstance(tModalEl).hide();
 
-                    currentEditEventId = meeting.id;
-                    $('#fs-title').val(meeting.title === '(No title)' ? '' : meeting.title);
-                    
-                    // Tách chuỗi dd/MM/yyyy HH:mm từ API trả về
-                    let startParts = meeting.startTime.split(' ');
-                    let sDate = startParts[0].split('/');
-                    $('#fs-start-date').val(`${sDate[2]}-${sDate[1]}-${sDate[0]}`); // Format lại yyyy-MM-dd
-                    $('#fs-start-time').val(startParts[1]);
-
-                    let endParts = meeting.endTime.split(' ');
-                    let eDate = endParts[0].split('/');
-                    $('#fs-end-date').val(`${eDate[2]}-${eDate[1]}-${eDate[0]}`);
-                    $('#fs-end-time').val(endParts[1]);
-
-                    $('#fs-location').val(meeting.location || '');
-                    $('#fs-description').val(meeting.description || '');
-                    $('#fs-notification').val(meeting.notification || '30 minutes before');
-                    
-                    if (typeof setupFsColorDropdown === "function") setupFsColorDropdown(meeting.color);
-
-                    if (typeof fsGuestEmails !== "undefined") {
-                        fsGuestEmails = meeting.participants.filter(p => p !== meeting.ownerEmail);
-                        if (typeof renderFsGuests === "function") renderFsGuests();
+                // 2. Chờ 400ms để hiệu ứng đóng hoàn tất, sau đó mở form Full Screen
+                setTimeout(() => {
+                    let fsModalEl = document.getElementById('fullScreenEventModal');
+                    if (!fsModalEl) {
+                        alert("Lỗi: Không tìm thấy thẻ HTML của form full screen! Bạn hãy kiểm tra lại xem đã copy html sang Manage.cshtml chưa nhé.");
+                        return;
                     }
+        
+                    // Hiện modal mới
+                    bootstrap.Modal.getOrCreateInstance(fsModalEl).show();
 
-                    $('#fs-visibility').val("1"); // 1 = Group Meeting
-                    // Tạo một option ảo chứa Team hiện tại để form FullScreen lấy được TeamId khi Save
-                    $('#fs-team-dropdown').html(`<option value="${currentTeamIdGlobal}">${document.getElementById('detailTeamName').innerText}</option>`);
-                    $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+                    // 3. Đổ dữ liệu vào form (đặt trong try-catch để nếu có lỗi data, form vẫn hiện ra được)
+                    try {
+                        $('#fs-edit-event-id').val(meeting.id);
+                        window.currentEditEventId = meeting.id;
+                        $('#fs-title').val(meeting.title === '(No title)' ? '' : meeting.title);
+            
+                        // Xử lý cắt chuỗi ngày giờ an toàn
+                        if (meeting.startTime) {
+                            let startParts = meeting.startTime.split(' ');
+                            let sDate = startParts[0].split('/');
+                            $('#fs-start-date').val(`${sDate[2]}-${sDate[1]}-${sDate[0]}`);
+                            $('#fs-start-time').val(startParts[1]);
+                        }
 
-                    if (typeof syncEndTimeMin === "function") syncEndTimeMin();
-                    $('#fullScreenEventModal').modal('show');
-                });
+                        if (meeting.endTime) {
+                            let endParts = meeting.endTime.split(' ');
+                            let eDate = endParts[0].split('/');
+                            $('#fs-end-date').val(`${eDate[2]}-${eDate[1]}-${eDate[0]}`);
+                            $('#fs-end-time').val(endParts[1]);
+                        }
+
+                        $('#fs-location').val(meeting.location || '');
+                        $('#fs-description').val(meeting.description || '');
+                        $('#fs-notification').val(meeting.notification || '30 minutes before');
+            
+                        if (typeof setupFsColorDropdown === "function") setupFsColorDropdown(meeting.color);
+
+                        // Gán danh sách khách mời (Đã sửa lỗi Object)
+                        if (typeof fsGuestEmails !== "undefined") {
+                            if (meeting.participants && Array.isArray(meeting.participants)) {
+                                fsGuestEmails = meeting.participants
+                                    .filter(p => p.email && p.email !== meeting.ownerEmail)
+                                    .map(p => p.email); // Trích xuất đúng chuỗi email
+                            }
+                            if (typeof renderFsGuests === "function") renderFsGuests();
+                        }
+
+                        $('#fs-visibility').val("1");
+                        let teamNameEl = document.getElementById('detailTeamName');
+                        let teamName = teamNameEl ? teamNameEl.innerText : "Team";
+                        $('#fs-team-dropdown').html(`<option value="${currentTeamIdGlobal}">${teamName}</option>`);
+                        $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+
+                        if (typeof syncEndTimeMin === "function") syncEndTimeMin();
+                    } catch (err) {
+                        console.error("Có lỗi nhỏ khi điền dữ liệu vào form:", err);
+                    }
+                }, 400);
+            });
 
             } else if (isJoined) {
                 // 2. MEMBER ĐÃ THAM GIA: Thấy nút thùng rác, chức năng Unjoin
@@ -597,11 +720,31 @@
                 });
         }
 
-        // Mở modal Chuyển quyền
+                // Mở modal Chuyển quyền
         function openTransferModal(teamId) {
             document.getElementById('transferTeamId').value = teamId;
-            document.getElementById('transferEmail').value = '';
+            let emailSelect = document.getElementById('transferEmail');
+            emailSelect.innerHTML = '<option value="">Loading members...</option>'; // Hiện chữ chờ tải
+    
             new bootstrap.Modal(document.getElementById('transferModal')).show();
+
+            // Tận dụng API có sẵn của bạn để lấy danh sách thành viên
+            fetch(`/Team/GetTeamDetails?teamId=${teamId}`)
+                .then(res => res.json())
+                .then(data => {
+                    emailSelect.innerHTML = '';
+                    // Lọc ra danh sách thành viên, loại bỏ trưởng nhóm hiện tại
+                    let members = data.members.filter(m => m.id !== data.ownerId);
+            
+                    if (members.length === 0) {
+                        emailSelect.innerHTML = '<option value="" disabled>No other members available</option>';
+                    } else {
+                        members.forEach(m => {
+                            emailSelect.innerHTML += `<option value="${m.email}">${m.username} (${m.email})</option>`;
+                        });
+                    }
+                })
+                .catch(err => console.error('Lỗi tải thành viên:', err));
         }
 
         // Gửi dữ liệu Chuyển quyền
@@ -643,3 +786,4 @@
         }
     </script>
 }
+
