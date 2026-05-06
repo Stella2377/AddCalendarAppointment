@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Http
 <!DOCTYPE html>
 <html lang="en">
 	<head>
@@ -110,32 +110,16 @@
         && Context.Request.Path.Value.Contains("/Team/Manage", StringComparison.OrdinalIgnoreCase);
 }
 
-<div class="dropdown">
+<div class="create-button-container">
     <button 
+        id="btn-create-event"
         class="btn btn-light rounded-pill shadow-sm d-flex align-items-center px-3 py-2"
         type="button"
-        data-bs-toggle="dropdown"
         @(isTeamPage ? "style=opacity:0.5; cursor:not-allowed; pointer-events:none;" : "")
     >
-        <img src="/images/google-plus-icon.png" width="24" class="me-2" />
-        <span class="fs-5">Create</span>
+        <i class="fa-solid fa-plus me-2 fs-4" style="color: #1a73e8;"></i>
+        <span class="fs-5" style="color: #3c4043; font-weight: 500;">Create</span>
     </button>
-
-    @if (!isTeamPage)
-    {
-        <ul class="dropdown-menu shadow">
-            <li>
-                <a class="dropdown-item" href="#" id="btn-create-event">
-                    Create event
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#joinMeetingModal">
-                    Enter Group meeting code
-                </a>
-            </li>
-        </ul>
-    }
 </div>
 
 			<!-- NÚT ĐIỀU HƯỚNG (MY TEAMS / BACK TO CALENDAR) -->

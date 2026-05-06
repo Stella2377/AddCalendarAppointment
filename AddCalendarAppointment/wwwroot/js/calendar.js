@@ -1301,9 +1301,10 @@ $(document).on('click', '#btn-create-event', function (e) {
     });
 
     // 5. Căn chỉnh vị trí popover (hiển thị chếch sang phải nút Create của sidebar)
-    let btnOffset = $(this).closest('.dropdown').offset();
+    let $container = $(this).closest('.create-button-container');
+    let btnOffset = $container.offset();
     let popTop = btnOffset.top;
-    let popLeft = btnOffset.left + $(this).closest('.dropdown').outerWidth() + 15; // Cách ra 15px cho đẹp
+    let popLeft = btnOffset.left + $container.outerWidth() + 15; // Cách ra 15px cho đẹp
 
     // Khôi phục chiều cao tối đa của form đề phòng trường hợp trước đó bị ép ngắn do kéo xuống cuối màn hình
     $('.popover-body-scroll').css('max-height', '400px');
