@@ -1816,6 +1816,9 @@ $(document).on('click', '#btn-edit-event', function (e) {
 
 // 5. NÚT LƯU CỦA FULL SCREEN MODAL
 $('#btn-save-fs-event').on('click', function () {
+    let hiddenId = $('#fs-edit-event-id').val();
+    let activeEventId = hiddenId ? hiddenId : (typeof currentEditEventId !== 'undefined' ? currentEditEventId : null);
+    if (activeEventId === "") activeEventId = null;
     let title = $('#fs-title').val() || "(No title)";
     let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
     let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
@@ -1828,7 +1831,7 @@ $('#btn-save-fs-event').on('click', function () {
     };
 
     let appointmentData = {
-        Id: currentEditEventId, // Nếu null thì API sẽ hiểu là Create mới
+        Id: activeEventId, // Nếu null thì API sẽ hiểu là Create mới
         Title: title,
         StartTime: toLocalISOString(finalStart),
         EndTime: toLocalISOString(finalEnd),
@@ -1842,7 +1845,7 @@ $('#btn-save-fs-event').on('click', function () {
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
     };
 
-    let apiUrl = currentEditEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
+    let apiUrl = activeEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
     let httpMethod = 'POST'; // Thay đổi nếu API Update dùng PUT
 
     $(this).prop('disabled', true).text('Đang lưu...');
