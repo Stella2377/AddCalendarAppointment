@@ -150,71 +150,158 @@ $(document).ready(function () {
         // Cập nhật CSS Variable để chia cột
         document.documentElement.style.setProperty('--col-count', currentViewMode);
         syncAllCalendars();
-    });
+    // Hàm đồng bộ tất cả các thành phần lịch
+    function syncAllCalendars() {
+        renderDynamicMiniCalendar(currDate);
+        updateMainMonthTitle(currDate);
+        renderMainCalendar(); // Vẽ lại lưới lịch chính
+    }
 
     $('#btnToggleSidebar').on('click', function () {
         $('#sidebar').toggleClass('collapsed');
     });
+
+    // Ràng buộc giờ kết thúc phải sau giờ bắt đầu
+    function syncEndTimeMin() {
+        // Cho Mini Popover
+        let popStartDate = $('#popover-start-date').val();
+        let popStartTime = $('#popover-start-time').val();
+        let popEndTime = $('#popover-end-time').val();
+
+        if (popStartTime && popEndTime) {
+            let [startH] = popStartTime.split(':').map(Number);
+            let [endH] = popEndTime.split(':').map(Number);
+
+            // Logic PM -> AM sáng hôm sau
+            if (startH >= 12 && endH < 12) {
+                let d = new Date(popStartDate);
+                d.setDate(d.getDate() + 1);
+                let edStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                $('#popover-end-date').val(edStr).show();
+            } else {
+                // Nếu không rơi vào case đêm, kiểm tra Start > End cùng ngày
+                if (popStartTime > popEndTime) {
+                    let [h, m] = popStartTime.split(':').map(Number);
+                    let d = new Date();
+                    d.setHours(h, m + 90);
+                    $('#popover-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                    
+                    if (d.getHours() < h) { // Wrap qua ngày mới
+                        let ed = new Date(popStartDate); ed.setDate(ed.getDate() + 1);
+                        $('#popover-end-date').val(ed.toISOString().split('T')[0]).show();
+                    } else {
+                        $('#popover-end-date').val(popStartDate).hide();
+                    }
+                } else {
+                    $('#popover-end-date').val(popStartDate).hide();
+                }
+            }
+        }
+
+        // Cho Full Screen Modal
+        let fsStartDate = $('#fs-start-date').val();
+        let fsEndDate = $('#fs-end-date').val();
+        let fsStartTime = $('#fs-start-time').val();
+        let fsEndTime = $('#fs-end-time').val();
+
+        if (fsStartTime && fsEndTime) {
+            let [startH] = fsStartTime.split(':').map(Number);
+            let [endH] = fsEndTime.split(':').map(Number);
+
+            if (fsStartDate === fsEndDate && startH >= 12 && endH < 12) {
+                let d = new Date(fsStartDate);
+                d.setDate(d.getDate() + 1);
+                $('#fs-end-date').val(d.toISOString().split('T')[0]);
+            } else if (fsStartDate === fsEndDate && fsStartTime > fsEndTime) {
+                let [h, m] = fsStartTime.split(':').map(Number);
+                let d = new Date();
+                d.setHours(h, m + 90);
+                $('#fs-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                if (d.getHours() < h) {
+                    let ed = new Date(fsStartDate); ed.setDate(ed.getDate() + 1);
+                    $('#fs-end-date').val(ed.toISOString().split('T')[0]);
+                }
+            }
+        }
+        
+        // Luôn cập nhật min attribute cho HTML5 picker
+        if (fsStartDate === fsEndDate) $('#fs-end-time').attr('min', fsStartTime);
+        else $('#fs-end-time').removeAttr('min');
+        
+        if ($('#popover-start-date').val() === $('#popover-end-date').val()) $('#popover-end-time').attr('min', popStartTime);
+        else $('#popover-end-time').removeAttr('min');
+    }
+
+    $(document).on('change', '#popover-start-time, #popover-end-time', syncEndTimeMin);
+    $(document).on('change', '#fs-start-time, #fs-start-date, #fs-end-date, #fs-end-time', syncEndTimeMin);
+
+    // Kiểm tra trực tiếp khi người dùng thay đổi ô Giờ kết thúc
+    $(document).on('change', '#popover-end-time, #fs-end-time', function () {
+        let isFs = $(this).attr('id').startsWith('fs');
+        let startId = isFs ? '#fs-start-time' : '#popover-start-time';
+        let startTime = $(startId).val();
+        let endTime = $(this).val();
+
+        // Nếu là Full Screen, chỉ kiểm tra nếu cùng ngày
+        if (isFs && $('#fs-start-date').val() !== $('#fs-end-date').val()) return;
+
+        if (startTime && endTime && startTime > endTime) {
+            let [startH] = startTime.split(':').map(Number);
+            let [endH] = endTime.split(':').map(Number);
+
+            // Nếu không phải trường hợp PM -> AM (qua đêm), thì mới ép cộng 90p
+            if (!(startH >= 12 && endH < 12)) {
+                let [h, m] = startTime.split(':').map(Number);
+                let d = new Date();
+                d.setHours(h, m + 90);
+                $(this).val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+            }
+        }
+        syncEndTimeMin();
+    });
+
+    // Xuất hàm ra global để dùng trong các handler khác nếu cần
+    window.syncEndTimeMin = syncEndTimeMin;
 });
 
-// Hàm đồng bộ tất cả các thành phần lịch
-function syncAllCalendars() {
-    renderDynamicMiniCalendar(currDate);
-    updateMainMonthTitle(currDate);
-    renderMainCalendar(); // Vẽ lại lưới lịch chính
-}
-
-// Định dạng hiển thị cột thời gian 
-function formatHour12(h) {
-    if (h === 0) return "12AM"; // Để trống dòng 0h cho thoáng giống Google Calendar
-    if (h === 12) return "12 PM";
-    return h > 12 ? (h - 12) + " PM" : h + " AM";
-}
-
 // ==========================================
-// HÀM VẼ LƯỚI LỊCH CHÍNH (MAIN CALENDAR) - MỚI BỔ SUNG
+// HÀM VẼ LƯỚI LỊCH CHÍNH (MAIN CALENDAR)
 // ==========================================
 function renderMainCalendar() {
     const $headerGrid = $('.calendar-header-grid');
     const $calendarGrid = $('.calendar-grid');
     const viewMode = parseInt($('#viewSelector').val() || 7);
 
-    // 1. DỌN DẸP TRIỆT ĐỂ TRƯỚC KHI VẼ MỚI
     // Xóa sạch nội dung cũ trong cả header và body
     $headerGrid.empty().removeClass('multi-row').show(); 
     $calendarGrid.empty().removeClass('multi-row year-view');
     
-    // Reset lại CSS Grid về mặc định (để tránh bị kẹt layout của Year/Month)
     $headerGrid.css('grid-template-columns', '');
     $calendarGrid.css('grid-template-columns', '');
-    $('.time-col').show(); // Mặc định hiện cột giờ bên trái
+    $('.time-col').show(); 
 
     let startDate = new Date(currDate);
-
-    // 2. PHÂN LUỒNG LOGIC HIỂN THỊ
 
     // --- CHẾ ĐỘ 1: XEM THEO CỘT (Day/Week - <= 7 ngày) ---
     if (viewMode <= 7) {
         document.documentElement.style.setProperty('--col-count', viewMode);
         
-        // ✅ 1. HEADER - CỘT GMT
-    $headerGrid.append(`
-        <div class="time-header" 
-             style="width:60px; font-size:10px; display:flex; align-items:flex-end; justify-content:center; color:#70757a; padding-bottom:5px;">
-            GMT+07
-        </div>
-    `);
-
-    // ✅ 2. BODY - CỘT GIỜ (QUAN TRỌNG NHẤT)
-    let $timeCol = $('<div class="time-col"></div>');
-    for (let h = 0; h < 24; h++) {
-        $timeCol.append(`
-            <div class="time-slot">
-                <span>${formatHour12(h)}</span>
+        $headerGrid.append(`
+            <div class="time-header" 
+                 style="width:60px; font-size:10px; display:flex; align-items:flex-end; justify-content:center; color:#70757a; padding-bottom:5px;">
+                GMT+07
             </div>
         `);
-    }
-    $calendarGrid.append($timeCol); // 👈 PHẢI append trước day-col
+
+        let $timeCol = $('<div class="time-col"></div>');
+        for (let h = 0; h < 24; h++) {
+            $timeCol.append(`
+                <div class="time-slot">
+                    <span>${formatHour12(h)}</span>
+                </div>
+            `);
+        }
+        $calendarGrid.append($timeCol); 
         
         if (viewMode === 7) {
             let day = startDate.getDay();
@@ -227,10 +314,8 @@ function renderMainCalendar() {
             
             renderColumnHeader($headerGrid, d);
             
-            // Tạo cột ngày
             let $col = $(`<div class="day-col" data-date="${d.toISOString().split('T')[0]}" style="position: relative; border-right: 1px solid #ddd;"></div>`);
             
-            // --- PHẦN SỬA: Thêm lưới giờ chính xác ---
             for (let h = 0; h < 24; h++) {
                 $col.append(`<div class="hour-marker" style="height: 60px; border-bottom: 1px solid #eee; box-sizing: border-box;"></div>`);
             }
@@ -243,12 +328,11 @@ function renderMainCalendar() {
     else if (viewMode > 7 && viewMode <= 31) {
         $headerGrid.addClass('multi-row');
         $calendarGrid.addClass('multi-row');
-        $('.time-col').hide(); // Ẩn cột giờ 24h
+        $('.time-col').hide(); 
 
         const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
         dayNames.forEach(name => $headerGrid.append(`<div class="day-header" style="padding:10px 0;">${name}</div>`));
 
-        // Logic đưa startDate về đầu tuần của tháng
         let firstOfMonth = new Date(currDate.getFullYear(), currDate.getMonth(), 1);
         let startDay = firstOfMonth.getDay();
         let diff = firstOfMonth.getDate() - startDay + (startDay === 0 ? -6 : 1);
@@ -264,7 +348,7 @@ function renderMainCalendar() {
         }
     }
     
-    // --- CHẾ ĐỘ 3: XEM NĂM (Year View - Hình 1 của bạn) ---
+    // --- CHẾ ĐỘ 3: XEM NĂM (Year View) ---
     else {
         $headerGrid.hide();
         $('.time-col').hide();
@@ -286,77 +370,8 @@ function renderMainCalendar() {
     }
 
     if (typeof loadAppointments === "function") loadAppointments();
+    if (typeof updateCurrentTimeIndicator === "function") updateCurrentTimeIndicator();
 }
-
-// Hàm bổ trợ để vẽ các tháng nhỏ trong Year View
-function renderMonthInYearView(date, containerId) {
-    const $container = $(containerId);
-    $container.empty();
-
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    
-    // Logic Thứ 2 đầu tuần (M T W T F S S)
-    let firstDay = new Date(year, month, 1).getDay();
-    let shiftIndex = (firstDay === 0) ? 6 : firstDay - 1;
-
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const prevLastDay = new Date(year, month, 0).getDate();
-
-    let html = '<table class="mini-calendar-table w-100" style="text-align: center; border-collapse: separate; border-spacing: 0 2px;">';
-    html += '<thead><tr><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead>';
-    html += '<tbody>';
-
-    let days = [];
-    for (let i = shiftIndex; i > 0; i--) days.push({ d: prevLastDay - i + 1, m: 'muted' });
-    for (let i = 1; i <= lastDay; i++) days.push({ d: i, m: 'current' });
-    while (days.length < 42) days.push({ d: days.length - lastDay - shiftIndex + 1, m: 'muted' });
-
-    const today = new Date();
-
-    for (let i = 0; i < days.length; i += 7) {
-        html += '<tr>';
-        days.slice(i, i + 7).forEach(dayObj => {
-            let cls = dayObj.m === 'muted' ? 'text-muted' : '';
-            let stateClass = '';
-
-            // Chỉ xét highlight cho ngày thuộc tháng hiện tại
-            if (dayObj.m === 'current') {
-                const isToday = (dayObj.d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
-                const isSelected = (dayObj.d === currDate.getDate() && month === currDate.getMonth() && year === currDate.getFullYear());
-
-                if (isToday) {
-                    stateClass = "current-day-circle"; // Class xanh đậm của bạn
-                } else if (isSelected) {
-                    stateClass = "selected-day-light"; // Class xanh nhạt của bạn
-                }
-            }
-
-            // Gán class .year-day-cell để lấy kích thước cố định 28px từ CSS của bạn
-            html += `<td style="padding: 0;">
-                        <div class="year-day-cell ${cls} ${stateClass}" 
-                             data-day="${dayObj.d}" 
-                             data-month="${month}" 
-                             data-year="${year}"
-                             data-type="${dayObj.m}">
-                            ${dayObj.d}
-                        </div>
-                    </td>`;
-        });
-        html += '</tr>';
-    }
-    html += '</tbody></table>';
-    $container.append(html);
-}
-
-function renderColumnHeader($container, date) {
-    let isToday = new Date().toDateString() === date.toDateString();
-    $container.append(`
-        <div class="day-header ${isToday ? 'active' : ''}">
-            <div class="day-name">${date.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</div>
-            <div class="day-num">${date.getDate()}</div>
-        </div>`);
-} 
 
 
 // ==========================================
@@ -430,16 +445,6 @@ function renderDynamicMiniCalendar(date) {
     }
 }
 
-$(document).on('click', '.mini-calendar-table td', function () {
-    const dateStr = $(this).data('date');
-    if (!dateStr) return;
-
-    currDate = new Date(dateStr);
-
-    // Sync toàn bộ UI
-    syncAllCalendars();
-});
-
 // ==========================================
 // CÁC HÀM GỌI AJAX & UTILS
 // ==========================================
@@ -449,64 +454,34 @@ function loadAppointments() {
         url: '/api/Appointment/GetAppointments',
         type: 'GET',
         success: function (data) {
-            // Xóa các sự kiện cũ trên UI
+            globalAppointments = data;
+            updateNotificationBell();
+
             $('.appointment-block').remove();
 
-            // Kiểm tra xem có đang ở chế độ hiển thị ô vuông (Month/Multi-row) hay không
+            // ====== PHẦN BỔ SUNG CHO MONTH VIEW TỪ BẢN 2 ======
             const isBoxView = $('.calendar-grid').hasClass('multi-row');
+            if (isBoxView) {
+                data.forEach(function (evt) {
+                    let start = new Date(evt.start);
+                    let dateStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+                    let $column = $(`.day-col[data-date='${dateStr}']`);
 
-            data.forEach(function (evt) {
-                let dateStr = evt.start.split('T')[0];
-                let startDate = new Date(evt.start);
-                let endDate = new Date(evt.end);
+                    if ($column.length > 0) {
+                        // Tích hợp dữ liệu của Bản 1 để Popup bấm vào không bị lỗi
+                        let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
+                        let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
+                        let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                        
+                        let isOwner = evt.isCurrentUserOwner;
+                        let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                        let isLocked = !isOwner || (evt.visibility == 1 && hasOtherParticipants);
+                        let opacityStyle = evt.guestStatus === 0 ? 'opacity: 0.5;' : '';
 
-                let $column = $(`.day-col[data-date='${dateStr}']`);
-
-                if ($column.length > 0) {
-                    // Xử lý dữ liệu an toàn để đưa vào data-attributes
-                    let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
-                    let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
-                    let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
-                    let titleStr = evt.title || '(No title)';
-
-                    let blockHtml = '';
-
-                    if (isBoxView) {
-                        // --- CHẾ ĐỘ XEM Ô (MONTH/2-3 WEEKS) ---
-                        // Hiển thị dạng nhãn dán xếp chồng tự nhiên, không cần top/height tuyệt đối
-                        blockHtml = `
+                        let blockHtml = `
                             <div class="appointment-block p-1 text-white rounded shadow-sm" 
                                  data-id="${evt.id}" 
-                                 data-title="${titleStr.replace(/"/g, '&quot;')}"
-                                 data-start="${evt.start}"
-                                 data-end="${evt.end}"
-                                 data-color="${evt.color}"
-                                 data-location="${locHtmlStr}"
-                                 data-description="${descStr}"
-                                 data-guests="${guestsJson}"
-                                 style="background-color: ${evt.color || '#3f51b5'}; margin-bottom: 2px; position: relative; width: 100%; font-size: 11px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                <span class="title" style="font-weight: 600;">
-                                    ${startDate.getHours()}:${String(startDate.getMinutes()).padStart(2, '0')} ${titleStr}
-                                </span>
-                            </div>
-                        `;
-                    } else {
-                        // --- CHẾ ĐỘ XEM CỘT (DAY/WEEK) ---
-                        // Tính toán vị trí theo pixel dựa trên thời gian (60px mỗi giờ)
-                        let topPx = (startDate.getHours() * 60) + startDate.getMinutes();
-                        let durationMins = (endDate - startDate) / (1000 * 60);
-                        let heightPx = durationMins > 0 ? durationMins : 60;
-
-                        let timeString = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-                                         " - " +
-                                         endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-                        let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
-
-                        blockHtml = `
-                            <div class="appointment-block p-1 text-white rounded shadow-sm" 
-                                 data-id="${evt.id}" 
-                                 data-title="${titleStr.replace(/"/g, '&quot;')}"
+                                 data-title="${evt.title || '(No title)'}"
                                  data-notification="${evt.notification || '30 minutes before'}"
                                  data-start="${evt.start}"
                                  data-end="${evt.end}"
@@ -518,25 +493,178 @@ function loadAppointments() {
                                  data-teamid="${evt.teamId || ''}"
                                  data-teamname="${evt.teamName || ''}"
                                  data-owneremail="${evt.ownerEmail || ''}"
-                                 draggable="true" 
-                                 style="position: absolute; top: ${topPx}px; height: ${heightPx}px; width: 95%; left: 0; z-index: 10; cursor: grab; background-color: ${evt.color || '#3f51b5'}; border: 1px solid white; overflow: hidden; user-select: none;">
-                                <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${titleStr}</div>
-                                <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
-                                    ${timeString}
-                                    ${locString}
-                                </div>
-                                <div class="resize-handle"></div>
+                                 data-isowner="${evt.isCurrentUserOwner}"
+                                 data-locked="${isLocked}"
+                                 data-gueststatus="${evt.guestStatus}"
+                                 draggable="false" 
+                                 style="background-color: ${evt.color}; margin-bottom: 2px; position: relative; width: 100%; font-size: 11px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ${opacityStyle}">
+                                <span class="title" style="font-weight: 600;">
+                                    ${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')} ${evt.title || '(No title)'}
+                                </span>
                             </div>
                         `;
+                        $column.append(blockHtml);
                     }
-                    $column.append(blockHtml);
+                });
+                applyColorFilter();
+                return; // Thoát sớm, bỏ qua logic cắt lane phức tạp của Bản 1
+            }
+            // ====== KẾT THÚC PHẦN BỔ SUNG ======
+
+            // 1. Thu thập tất cả các phân đoạn (segments) của cuộc hẹn theo từng cột ngày
+            let segmentsByColumn = {};
+
+            data.forEach(function (evt) {
+                let start = new Date(evt.start);
+                let end = new Date(evt.end);
+
+                let currentDay = new Date(start);
+                currentDay.setHours(0, 0, 0, 0);
+                let endDay = new Date(end);
+                endDay.setHours(0, 0, 0, 0);
+
+                while (currentDay <= endDay) {
+                    let dateStr = currentDay.getFullYear() + '-' + String(currentDay.getMonth() + 1).padStart(2, '0') + '-' + String(currentDay.getDate()).padStart(2, '0');
+                    
+                    let topPx = 0;
+                    let heightPx = 1440;
+
+                    if (currentDay.toDateString() === start.toDateString()) {
+                        topPx = (start.getHours() * 60) + start.getMinutes();
+                        heightPx = 1440 - topPx;
+                    }
+
+                    if (currentDay.toDateString() === end.toDateString()) {
+                        let endMins = (end.getHours() * 60) + end.getMinutes();
+                        if (currentDay.toDateString() === start.toDateString()) {
+                            heightPx = endMins - topPx;
+                        } else {
+                            topPx = 0;
+                            heightPx = endMins;
+                        }
+                    }
+
+                    if (heightPx > 0) {
+                        if (!segmentsByColumn[dateStr]) segmentsByColumn[dateStr] = [];
+                        segmentsByColumn[dateStr].push({
+                            evt: evt,
+                            topPx: topPx,
+                            heightPx: heightPx,
+                            startTime: start,
+                            endTime: end
+                        });
+                    }
+                    currentDay.setDate(currentDay.getDate() + 1);
                 }
             });
 
-            // Gọi hàm lọc màu nếu có
-            if (typeof applyColorFilter === "function") {
-                applyColorFilter();
-            }
+            // 2. Xử lý hiển thị từng cột (xử lý chồng lấn)
+            Object.keys(segmentsByColumn).forEach(dateStr => {
+                let $column = $(`.day-col[data-date='${dateStr}']`);
+                if ($column.length === 0) return;
+
+                let segments = segmentsByColumn[dateStr];
+                // Sắp xếp theo thời gian bắt đầu, sau đó theo chiều cao giảm dần
+                segments.sort((a, b) => a.topPx - b.topPx || b.heightPx - a.heightPx);
+
+                // Gom nhóm các sự kiện có khả năng chồng lấn (clusters)
+                let clusters = [];
+                let currentCluster = null;
+                let maxEndInCluster = -1;
+
+                segments.forEach(seg => {
+                    if (!currentCluster || seg.topPx >= maxEndInCluster) {
+                        currentCluster = [];
+                        clusters.push(currentCluster);
+                        maxEndInCluster = seg.topPx + seg.heightPx;
+                    } else {
+                        maxEndInCluster = Math.max(maxEndInCluster, seg.topPx + seg.heightPx);
+                    }
+                    currentCluster.push(seg);
+                });
+
+                // Phân bổ lane (cột dọc) cho từng cluster
+                clusters.forEach(cluster => {
+                    let lanes = [];
+                    cluster.forEach(seg => {
+                        let placed = false;
+                        for (let i = 0; i < lanes.length; i++) {
+                            let lastInLane = lanes[i][lanes[i].length - 1];
+                            if (seg.topPx >= lastInLane.topPx + lastInLane.heightPx) {
+                                lanes[i].push(seg);
+                                seg.laneIndex = i;
+                                placed = true;
+                                break;
+                            }
+                        }
+                        if (!placed) {
+                            seg.laneIndex = lanes.length;
+                            lanes.push([seg]);
+                        }
+                    });
+
+                    let laneCount = lanes.length;
+                    cluster.forEach(seg => {
+                        let widthPercent = 100 / laneCount;
+                        let leftPercent = seg.laneIndex * widthPercent;
+                        
+                        // Render HTML
+                        let evt = seg.evt;
+                        let timeString = seg.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
+                            " - " + seg.endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                        let locString = evt.location ? `<br/>📍 ${evt.location}` : '';
+                        let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
+                        let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
+                        let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
+                        
+                        let isOwner = evt.isCurrentUserOwner;
+                        let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
+                        
+                        let isLocked = false;
+                        if (!isOwner) {
+                            isLocked = true;
+                        } else if (evt.visibility == 1 && hasOtherParticipants) {
+                            isLocked = true;
+                        }
+
+                        let draggableAttr = isLocked ? 'false' : 'true';
+                        let resizeHandleHtml = isLocked ? '' : '<div class="resize-handle"></div>';
+                        let opacityStyle = evt.guestStatus === 0 ? 'opacity: 0.5;' : '';
+
+                        let blockHtml = `
+                            <div class="appointment-block p-1 text-white rounded shadow-sm" 
+                                 data-id="${evt.id}" 
+                                 data-title="${evt.title || '(No title)'}"
+                                 data-notification="${evt.notification || '30 minutes before'}"
+                                 data-start="${evt.start}"
+                                 data-end="${evt.end}"
+                                 data-color="${evt.color}"
+                                 data-location="${locHtmlStr}"
+                                 data-description="${descStr}"
+                                 data-guests="${guestsJson}"
+                                 data-visibility="${evt.visibility}"
+                                 data-teamid="${evt.teamId || ''}"
+                                 data-teamname="${evt.teamName || ''}"
+                                 data-owneremail="${evt.ownerEmail || ''}"
+                                 data-isowner="${evt.isCurrentUserOwner}"
+                                 data-locked="${isLocked}"
+                                 data-gueststatus="${evt.guestStatus}"
+                                 draggable="${draggableAttr}" 
+                                 style="position: absolute; top: ${seg.topPx}px; height: ${seg.heightPx}px; width: ${widthPercent - 1}%; left: ${leftPercent}%; z-index: 10; background-color: ${evt.color}; border: 1px solid white; overflow: hidden; ${opacityStyle}">
+                                <div class="title" style="font-weight: 600; font-size: 13px; line-height: 1.2;">${evt.title || '(No title)'}</div>
+                                <div class="time-loc" style="font-size: 11px; line-height: 1.2; margin-top: 2px;">
+                                    ${timeString} ${locString}
+                                </div>
+                                ${resizeHandleHtml}
+                            </div>
+                        `;
+                        $column.append(blockHtml);
+                    });
+                });
+            });
+
+            applyColorFilter();
         },
         error: function (err) {
             console.error("Lỗi khi load appointments:", err);
@@ -666,6 +794,34 @@ $(document).on('drop', '.day-col', function (e) {
             EndTime: endTime
         }),
         success: function (res) {
+            // 1. Check trùng lịch Team (Group Meeting)
+            if (res.suggestTeamJoin) {
+                if (confirm(res.message)) {
+                    $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                        if (joinRes.success) {
+                            // Người dùng đồng ý tham gia -> Xóa lịch cũ đang kéo để tránh rác dữ liệu
+                            $.ajax({
+                                url: '/api/Appointment/delete/' + currentId,
+                                type: 'DELETE',
+                                success: function () {
+                                    alert("Đã tham gia cuộc họp nhóm thành công!");
+                                    loadAppointments();
+                                }
+                            });
+                        } else {
+                            alert("Tham gia thất bại: " + joinRes.message);
+                            loadAppointments(); // Reset lịch về vị trí cũ
+                        }
+                    });
+                } else {
+                    // Người dùng Cancel
+                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                    loadAppointments(); // Reset lịch về vị trí cũ
+                }
+                return;
+            }
+
+            // 2. Check trùng lịch thông thường (isOverlap)
             if (res.isOverlap) {
                 if (confirm(res.message)) {
                     $.ajax({
@@ -688,7 +844,13 @@ $(document).on('drop', '.day-col', function (e) {
                 }
                 return;
             }
+
+            // 3. Không có lỗi gì
             if (res.success) loadAppointments();
+            else {
+                alert(res.message || "Lưu thất bại!");
+                loadAppointments();
+            }
         },
         error: function () {
             alert("Lỗi kết nối server khi di chuyển lịch!");
@@ -830,8 +992,10 @@ $(document).ready(function () {
         });
 
         $('#popover-start-date').val(dateStr);
+        $('#popover-end-date').val(dateStr).hide(); 
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
         $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+        syncEndTimeMin();
 
         // Reset visibility dropdown
         $('#popover-visibility').val('0');
@@ -935,11 +1099,45 @@ $(document).ready(function () {
             let finalStart = new Date(`${dateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`);
             let finalEnd = new Date(`${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`);
 
+            let resizeId = $resizeBlock.data('id'); // Lưu lại ID trước khi AJAX chạy
+
             // Gọi API Update thời gian
             $.ajax({
                 url: '/api/Appointment/update-time', type: 'POST', contentType: 'application/json',
-                data: JSON.stringify({ Id: $resizeBlock.data('id'), StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
-                success: function () { loadAppointments(); }
+                data: JSON.stringify({ Id: resizeId, StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
+                success: function (res) { 
+                    // Check trùng lịch Team
+                    if (res.suggestTeamJoin) {
+                        if (confirm(res.message)) {
+                            $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
+                                if (joinRes.success) {
+                                    // Xóa lịch bị kéo giãn để tránh rác
+                                    $.ajax({
+                                        url: '/api/Appointment/delete/' + resizeId,
+                                        type: 'DELETE',
+                                        success: function () {
+                                            alert("Đã tham gia cuộc họp nhóm thành công!");
+                                            loadAppointments();
+                                        }
+                                    });
+                                } else {
+                                    alert("Tham gia thất bại: " + joinRes.message);
+                                    loadAppointments();
+                                }
+                            });
+                        } else {
+                            alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                            loadAppointments(); // Trả lại kích thước cũ
+                        }
+                        return;
+                    }
+
+                    if (res.success) loadAppointments(); 
+                    else {
+                        alert(res.message || "Cập nhật thất bại!");
+                        loadAppointments();
+                    }
+                }
             });
             $resizeBlock = null;
         }
@@ -967,6 +1165,7 @@ $(document).ready(function () {
 
         let visibility = block.attr('data-visibility');
         let teamName = block.attr('data-teamname');
+        let isOwner = block.attr('data-isowner') === 'true';
 
         if (!startStr || !endStr) return;
 
@@ -974,13 +1173,24 @@ $(document).ready(function () {
         let end = new Date(endStr);
         let dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
         let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-        let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)} - ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        
+        let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)}`;
+        if (start.toDateString() === end.toDateString()) {
+            timeStr += ` - ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        } else {
+            timeStr += ` - ${end.toLocaleDateString('en-US', dateOptions)} • ${end.toLocaleTimeString('en-US', timeOptions)}`;
+        }
 
         $('#detail-title').text(title);
         $('#detail-time').text(timeStr);
         $('#detail-color-dot').css('background-color', color);
         $('#btn-delete-event').data('id', id);
         $('#detail-notification').text(notification);
+
+        // Truyền data vào nút xóa
+        $('#btn-delete-event').data('id', id);
+        $('#btn-delete-event').data('isowner', isOwner);
+        $('#btn-delete-event').data('visibility', visibility);
 
         // --- XỬ LÝ ẨN/HIỆN CÁC TRƯỜNG DỮ LIỆU ---
 
@@ -1054,6 +1264,31 @@ $(document).ready(function () {
             $('#detail-visibility-row').removeClass('d-flex').addClass('d-none');
         }
 
+        // --- ẨN/HIỆN NÚT EDIT VÀ TRASH ---
+        let guestStatus = parseInt(block.attr('data-gueststatus'));
+        
+        // Nếu không phải chủ sở hữu (là Guest) -> Không cho sửa bất cứ gì (cả Private và Group Meeting)
+        if (!isOwner) {
+            $('#btn-edit-event').hide();
+            if (guestStatus === 0) {
+                $('#btn-delete-event').hide(); // Hide top trash, use Deny instead
+            } else {
+                $('#btn-delete-event').show();
+            }
+        } else {
+            $('#btn-edit-event').show();
+            $('#btn-delete-event').show();
+        }
+
+        // --- ACCEPT/DENY CHO GUEST ---
+        if (!isOwner && guestStatus === 0) {
+            $('#detail-action-row').removeClass('d-none');
+            $('#btn-accept-invite').data('id', id);
+            $('#btn-deny-invite').data('id', id);
+        } else {
+            $('#detail-action-row').addClass('d-none');
+        }
+
         // --- LOGIC TÍNH TỌA ĐỘ VÀ CHỐNG TRÀN MÀN HÌNH ---
         let $detailPopover = $('#event-detail-popover');
         $detailPopover.show(); // Hiện ra trước để lấy kích thước thật
@@ -1093,17 +1328,79 @@ $(document).ready(function () {
         $('.calendar-body-scroll').css('overflow', 'auto');
     });
 
+    function acceptInvitation(id, overwriteOverlap = false) {
+        $.post('/api/Appointment/accept/' + id + '?overwriteOverlap=' + overwriteOverlap, function(res) {
+            if (res.isOverlap) {
+                if (confirm(res.message)) {
+                    acceptInvitation(id, true);
+                }
+            } else if (res.success) {
+                $('#event-detail-popover').hide();
+                $('.calendar-body-scroll').css('overflow', 'auto');
+                loadAppointments();
+            } else {
+                alert("Lỗi: " + res.message);
+            }
+        });
+    }
+
+    $('#btn-accept-invite').on('click', function() {
+        let id = $(this).data('id');
+        acceptInvitation(id);
+    });
+
+    $('#btn-deny-invite').on('click', function() {
+        let id = $(this).data('id');
+        $.post('/api/Appointment/unjoin/' + id, function(res) {
+            if (res.success) {
+                $('#event-detail-popover').hide();
+                $('.calendar-body-scroll').css('overflow', 'auto');
+                loadAppointments();
+            } else {
+                alert("Lỗi: " + res.message);
+            }
+        });
+    });
+
     $('#btn-delete-event').on('click', function () {
         let id = $(this).data('id');
-        if (confirm('Bạn có chắc chắn muốn xóa cuộc hẹn này?')) {
+        let isOwner = $(this).data('isowner');
+        // Ép kiểu về string để so sánh cho an toàn
+        let visibility = String($(this).data('visibility'));
+
+        // Cấu hình mặc định cho Owner (Xóa sự kiện)
+        let confirmMessage = 'Bạn có chắc chắn muốn xóa cuộc hẹn này?';
+        let apiUrl = '/api/Appointment/delete/' + id;
+        let httpMethod = 'DELETE';
+
+        // Nếu không phải chủ sở hữu (là Guest) -> Đổi sang chế độ Rời khỏi (Unjoin) bất kể Private hay Group Meeting
+        if (!isOwner) {
+            confirmMessage = 'Bạn có chắc muốn rời khỏi cuộc hẹn này không?';
+            apiUrl = '/api/Appointment/unjoin/' + id;
+            httpMethod = 'POST';
+        }
+
+        if (confirm(confirmMessage)) {
             $.ajax({
-                url: '/api/Appointment/delete/' + id, type: 'DELETE',
-                success: function () {
-                    $('#event-detail-popover').hide();
-                    $('.calendar-body-scroll').css('overflow', 'auto'); // <--- THÊM DÒNG NÀY
-                    loadAppointments();
+                url: apiUrl,
+                type: httpMethod,
+                success: function (res) {
+                    if (res.success) {
+                        $('#event-detail-popover').hide();
+                        $('.calendar-body-scroll').css('overflow', 'auto');
+                        loadAppointments();
+                    } else {
+                        alert("Thao tác thất bại: " + (res.message || "Lỗi không xác định"));
+                    }
                 },
-                error: function () { alert('Lỗi khi xóa!'); }
+                error: function (xhr) {
+                    // Bắt lỗi chi tiết từ server gửi về nếu có
+                    let msg = "Lỗi khi xử lý thao tác!";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                }
             });
         }
     });
@@ -1225,7 +1522,7 @@ $(document).ready(function () {
         let endTimeVal = $('#popover-end-time').val();
 
         let finalStart = new Date(`${startDateVal}T${startTimeVal}:00`);
-        let finalEnd = new Date(`${startDateVal}T${endTimeVal}:00`);
+        let finalEnd = new Date(`${$('#popover-end-date').val()}T${endTimeVal}:00`);
         let selectedNotification = $('#notification-list select').first().val() || "30 minutes before";
 
         let appointmentData = {
@@ -1258,11 +1555,15 @@ $(document).ready(function () {
                                 $('#event-popover').hide();
                                 $('.appointment-ghost').remove();
                                 $ghostEvent = null;
+                                alert("Đã tham gia cuộc họp nhóm thành công!");
                                 loadAppointments();
                             } else {
                                 alert("Tham gia thất bại: " + joinRes.message);
                             }
                         });
+                    } else {
+                        // Người dùng nhấn Cancel từ chối Join
+                        alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
                     }
                     $('#btn-save-event').prop('disabled', false).text('Save');
                     return;
@@ -1466,6 +1767,7 @@ $(document).on('click', '#btn-create-event', function (e) {
 
     // 3. Đổ dữ liệu thời gian vào các ô input
     $('#popover-start-date').val(dateStr);
+    $('#popover-end-date').val(dateStr).hide(); // Mặc định ẩn ngày kết thúc
     $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
     $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
 
@@ -1481,11 +1783,13 @@ $(document).on('click', '#btn-create-event', function (e) {
     $colorSelect.off('change').on('change', function () {
         $(this).css('color', $(this).val());
     });
+    syncEndTimeMin();
 
     // 5. Căn chỉnh vị trí popover (hiển thị chếch sang phải nút Create của sidebar)
-    let btnOffset = $(this).closest('.dropdown').offset();
+    let $container = $(this).closest('.create-button-container');
+    let btnOffset = $container.offset();
     let popTop = btnOffset.top;
-    let popLeft = btnOffset.left + $(this).closest('.dropdown').outerWidth() + 15; // Cách ra 15px cho đẹp
+    let popLeft = btnOffset.left + $container.outerWidth() + 15; // Cách ra 15px cho đẹp
 
     // Khôi phục chiều cao tối đa của form đề phòng trường hợp trước đó bị ép ngắn do kéo xuống cuối màn hình
     $('.popover-body-scroll').css('max-height', '400px');
@@ -1594,6 +1898,9 @@ $(document).on('click', '#btn-more-options', function (e) {
     e.preventDefault();
     currentEditEventId = null; // Đang tạo mới
 
+    // Reset disabled fields
+    $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
+
     // Bê dữ liệu từ mini popover sang
     $('#fs-title').val($('#popover-title').val());
     $('#fs-start-date').val($('#popover-start-date').val());
@@ -1621,6 +1928,7 @@ $(document).on('click', '#btn-more-options', function (e) {
     renderFsGuests();
 
     $('#event-popover').hide();
+    syncEndTimeMin();
     $('#fullScreenEventModal').modal('show');
 });
 
@@ -1631,14 +1939,23 @@ $(document).on('click', '#btn-edit-event', function (e) {
 
     // Tìm event block trên UI để lấy data
     let $block = $(`.appointment-block[data-id='${currentEditEventId}']`);
+    let isLocked = $block.attr('data-locked') === 'true';
+
+    // Reset disabled fields before applying lock
+    $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
+
+    if (isLocked) {
+        $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', true);
+    }
+
     let start = new Date($block.data('start'));
     let end = new Date($block.data('end'));
 
     let title = $block.data('title');
     $('#fs-title').val(title === '(No title)' ? '' : title);
 
-    $('#fs-start-date').val(start.toISOString().split('T')[0]);
-    $('#fs-end-date').val(end.toISOString().split('T')[0]);
+    $('#fs-start-date').val(start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0'));
+    $('#fs-end-date').val(end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0'));
     $('#fs-start-time').val(`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`);
     $('#fs-end-time').val(`${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`);
 
@@ -1677,11 +1994,15 @@ $(document).on('click', '#btn-edit-event', function (e) {
     // Ẩn Popover detail và mở modal
     $('#event-detail-popover').hide();
     $('.calendar-body-scroll').css('overflow', 'auto');
+    syncEndTimeMin();
     $('#fullScreenEventModal').modal('show');
 });
 
 // 5. NÚT LƯU CỦA FULL SCREEN MODAL
 $('#btn-save-fs-event').on('click', function () {
+    let hiddenId = $('#fs-edit-event-id').val();
+    let activeEventId = hiddenId ? hiddenId : (typeof currentEditEventId !== 'undefined' ? currentEditEventId : null);
+    if (activeEventId === "") activeEventId = null;
     let title = $('#fs-title').val() || "(No title)";
     let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
     let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
@@ -1694,7 +2015,7 @@ $('#btn-save-fs-event').on('click', function () {
     };
 
     let appointmentData = {
-        Id: currentEditEventId, // Nếu null thì API sẽ hiểu là Create mới
+        Id: activeEventId, // Nếu null thì API sẽ hiểu là Create mới
         Title: title,
         StartTime: toLocalISOString(finalStart),
         EndTime: toLocalISOString(finalEnd),
@@ -1708,7 +2029,7 @@ $('#btn-save-fs-event').on('click', function () {
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
     };
 
-    let apiUrl = currentEditEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
+    let apiUrl = activeEventId ? '/api/Appointment/update' : '/api/Appointment/create'; // Thay đổi URL Update nếu cần
     let httpMethod = 'POST'; // Thay đổi nếu API Update dùng PUT
 
     $(this).prop('disabled', true).text('Đang lưu...');
@@ -1724,11 +2045,15 @@ $('#btn-save-fs-event').on('click', function () {
                     $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
                         if (joinRes.success) {
                             $('#fullScreenEventModal').modal('hide');
+                            alert("Đã tham gia cuộc họp nhóm thành công!");
                             loadAppointments();
                         } else {
                             alert("Tham gia thất bại: " + joinRes.message);
                         }
                     });
+                } else {
+                    // Người dùng nhấn Cancel từ chối Join
+                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
                 }
                 $(this).prop('disabled', false).text('Save');
                 return;
@@ -1828,48 +2153,233 @@ $(document).on('change', '#fs-visibility', function () {
 });
 
 // ==========================================
-// BỔ SUNG ĐỂ ĐỒNG BỘ 2 CHIỀU (KHÔNG SỬA HÀM CŨ)
+// HIỂN THỊ THANH THỜI GIAN THỰC (CURRENT TIME INDICATOR)
 // ==========================================
+function updateCurrentTimeIndicator() {
+    let now = new Date();
+    // Chuyển đổi ngày hiện tại thành chuỗi YYYY-MM-DD để tìm cột
+    let dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    // Tìm cột của ngày hôm nay trong lưới lịch
+    let $todayCol = $(`.day-col[data-date='${dateStr}']`);
+
+    // Xóa thanh đỏ cũ nếu đang tồn tại (để reset vị trí hoặc tự động nhảy khi qua ngày mới)
+    $('.current-time-indicator').remove();
+
+    // Nếu cột của ngày hôm nay đang hiển thị trên màn hình
+    if ($todayCol.length > 0) {
+        // Tính toán tọa độ Y: 1 giờ = 60px, 1 phút = 1px
+        let topPx = (now.getHours() * 60) + now.getMinutes();
+
+        // Vẽ thanh đỏ
+        let $indicator = $('<div class="current-time-indicator"></div>').css('top', topPx + 'px');
+        $todayCol.append($indicator);
+    }
+}
+
+// Gọi hàm cập nhật ngay lập tức khi load xong JS
+updateCurrentTimeIndicator();
+
+// Thiết lập tự động chạy lại hàm này mỗi 60 giây (60000 ms) mà không cần reload trang
+setInterval(updateCurrentTimeIndicator, 60000);
+
+// ==========================================
+// LOGIC CHUÔNG THÔNG BÁO (NOTIFICATION BELL)
+// ==========================================
+let globalAppointments = [];
+let dismissedNotifications = new Set();
+let currentNewNotifs = [];
+
+function getNotifyMinutes(notifyStr) {
+    if (!notifyStr) return 0;
+    if (notifyStr.includes("10 minutes")) return 10;
+    if (notifyStr.includes("30 minutes")) return 30;
+    if (notifyStr.includes("1 hour")) return 60;
+    return 0;
+}
+
+function updateNotificationBell() {
+    let now = new Date();
+    let hasNew = false;
+    let html = '';
+    currentNewNotifs = []; // Reset danh sách new hiện tại
+
+    // Sắp xếp các cuộc hẹn có thời gian bắt đầu gần nhất lên đầu
+    let sortedAppts = [...globalAppointments].sort((a, b) => new Date(b.start) - new Date(a.start));
+
+    let count = 0;
+    sortedAppts.forEach(evt => {
+        let mins = getNotifyMinutes(evt.notification);
+        if (mins > 0) {
+            count++;
+            let startDt = new Date(evt.start);
+            let notifyTime = new Date(startDt.getTime() - mins * 60000);
+            
+            // Hiện chấm đỏ nếu đã đến giờ thông báo và cuộc hẹn chưa bắt đầu (còn đang đếm ngược)
+            let isNew = false;
+            if (now >= notifyTime && now <= startDt) {
+                isNew = true;
+                if (!dismissedNotifications.has(evt.id)) {
+                    hasNew = true;
+                    currentNewNotifs.push(evt.id);
+                }
+            }
+
+            let typeStr = evt.visibility == 1 ? `Group Meeting${evt.teamName ? ' - ' + evt.teamName : ''}` : 'Private';
+            let iconClass = evt.visibility == 1 ? 'fa-users' : 'fa-lock';
+            
+            html += `
+                <li class="p-2 border-bottom" style="background-color: ${isNew && !dismissedNotifications.has(evt.id) ? '#f8f9fa' : '#fff'};">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-bold" style="font-size: 14px; color: ${evt.color};">
+                                ${isNew && !dismissedNotifications.has(evt.id) ? '<span class="badge bg-danger me-1">New</span>' : ''}
+                                ${evt.title || '(No title)'}
+                            </div>
+                            <div class="text-muted" style="font-size: 12px;">
+                                <i class="fas ${iconClass} me-1"></i> ${typeStr}
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 12px;">
+                                <i class="fas fa-clock me-1"></i> Bắt đầu: ${startDt.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit'})} (${startDt.toLocaleDateString()})
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-dark border ms-2" style="font-size: 11px; white-space: nowrap;">${evt.notification}</span>
+                    </div>
+                </li>
+            `;
+        }
+    });
+
+    if (count === 0) {
+        html = '<li class="p-3 text-center text-muted">No notifications</li>';
+    }
+
+    $('#notification-list-container').html(html);
+
+    if (hasNew) {
+        $('#notification-badge').removeClass('d-none');
+    } else {
+        $('#notification-badge').addClass('d-none');
+    }
+}
+
+// Kiểm tra định kỳ mỗi phút
+setInterval(function() {
+    if (globalAppointments.length > 0) {
+        updateNotificationBell();
+    }
+}, 60000);
+
+// Khi click vào chuông thì ẩn dấu chấm đỏ và đánh dấu đã đọc
+$(document).on('click', '#notificationDropdown', function() {
+    $('#notification-badge').addClass('d-none');
+    currentNewNotifs.forEach(id => dismissedNotifications.add(id));
+    // Xóa chữ "New" trên giao diện ngay lập tức
+    $('#notification-list-container .badge.bg-danger').remove();
+    // Bỏ màu nền
+    $('#notification-list-container li').css('background-color', '#fff');
+});
+
+
+// ==========================================
+// CÁC HÀM HỖ TRỢ GIAO DIỆN TỪ BẢN 2
+// ==========================================
+function formatHour12(h) {
+    if (h === 0) return "12AM"; 
+    if (h === 12) return "12 PM";
+    return h > 12 ? (h - 12) + " PM" : h + " AM";
+}
+
+function renderMonthInYearView(date, containerId) {
+    const $container = $(containerId);
+    $container.empty();
+
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    let firstDay = new Date(year, month, 1).getDay();
+    let shiftIndex = (firstDay === 0) ? 6 : firstDay - 1;
+
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const prevLastDay = new Date(year, month, 0).getDate();
+
+    let html = '<table class="mini-calendar-table w-100" style="text-align: center; border-collapse: separate; border-spacing: 0 2px;">';
+    html += '<thead><tr><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead>';
+    html += '<tbody>';
+
+    let days = [];
+    for (let i = shiftIndex; i > 0; i--) days.push({ d: prevLastDay - i + 1, m: 'muted' });
+    for (let i = 1; i <= lastDay; i++) days.push({ d: i, m: 'current' });
+    while (days.length < 42) days.push({ d: days.length - lastDay - shiftIndex + 1, m: 'muted' });
+
+    const today = new Date();
+
+    for (let i = 0; i < days.length; i += 7) {
+        html += '<tr>';
+        days.slice(i, i + 7).forEach(dayObj => {
+            let cls = dayObj.m === 'muted' ? 'text-muted' : '';
+            let stateClass = '';
+
+            if (dayObj.m === 'current') {
+                const isToday = (dayObj.d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+                const isSelected = (dayObj.d === currDate.getDate() && month === currDate.getMonth() && year === currDate.getFullYear());
+
+                if (isToday) {
+                    stateClass = "current-day-circle"; 
+                } else if (isSelected) {
+                    stateClass = "selected-day-light"; 
+                }
+            }
+
+            html += `<td style="padding: 0;">
+                        <div class="year-day-cell ${cls} ${stateClass}" 
+                             data-day="${dayObj.d}" 
+                             data-month="${month}" 
+                             data-year="${year}"
+                             data-type="${dayObj.m}">
+                            ${dayObj.d}
+                        </div>
+                    </td>`;
+        });
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    $container.append(html);
+}
+
+function renderColumnHeader($container, date) {
+    let isToday = new Date().toDateString() === date.toDateString();
+    $container.append(`
+        <div class="day-header ${isToday ? 'active' : ''}">
+            <div class="day-name">${date.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</div>
+            <div class="day-num">${date.getDate()}</div>
+        </div>`);
+} 
 
 $(document).on('click', '.year-day-cell, [data-date]', function () {
     const $this = $(this);
-    
-    // 1. Lấy dữ liệu ngày tháng từ ô vừa click (tương thích cả 2 bên)
-    let dateStr = $this.attr('data-date'); // YYYY-MM-DD
+    let dateStr = $this.attr('data-date'); 
     let d, m, y;
 
     if (dateStr) {
         const parts = dateStr.split('-');
         y = parseInt(parts[0]);
-        m = parseInt(parts[1]) - 1; // Tháng trong JS từ 0-11
+        m = parseInt(parts[1]) - 1; 
         d = parseInt(parts[2]);
     } else {
-        // Dự phòng nếu bạn dùng data-day, data-month...
         d = $this.data('day');
         m = $this.data('month');
         y = $this.data('year');
     }
 
     if (!d || m === undefined || !y) return;
-
-    // 2. Cập nhật biến toàn cục dùng chung
     currDate = new Date(y, m, d);
 
-    // 3. Cập nhật giao diện Main Calendar
-    // Nếu đang ở Year View (365), khi click thường sẽ nhảy về Week/Day
     if ($('#viewSelector').val() == 365) {
-        $('#viewSelector').val(7); // Chuyển về Week View
+        $('#viewSelector').val(7); 
     }
     
-    if (typeof renderMainCalendar === "function") {
-        renderMainCalendar();
-    }
-
-    // 4. Cập nhật giao diện Sidebar (Mini Calendar)
-    // Gọi hàm render của sidebar để nó vẽ lại và nhận diện class 'selected-day-light'
-    if (typeof renderSidebarCalendar === "function") {
-        renderSidebarCalendar();
-    } else if (typeof updateMiniCalendar === "function") {
-        updateMiniCalendar();
-    }
+    if (typeof renderMainCalendar === "function") renderMainCalendar();
+    if (typeof renderSidebarCalendar === "function") renderSidebarCalendar();
+    else if (typeof updateMiniCalendar === "function") updateMiniCalendar();
 });

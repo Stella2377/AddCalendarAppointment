@@ -71,7 +71,11 @@ namespace AddCalendarAppointment.Controllers
                 visibility = (int)a.Visibility,
                 teamName = a.Team?.Name,
                 teamId = a.TeamId,
-                ownerEmail = a.Owner?.Email
+                ownerEmail = a.Owner?.Email,
+                isCurrentUserOwner = a.OwnerId == userId,
+                guestStatus = a.Guests != null && a.Guests.Any(g => g.UserId == userId) 
+                    ? (int)a.Guests.First(g => g.UserId == userId).Status 
+                    : 1
             });
 
             return Ok(calendarEvents);
@@ -98,16 +102,16 @@ namespace AddCalendarAppointment.Controllers
                 }
                 else
                 {
-                    // Nếu người dùng chọn "Thay thế" -> Xóa (nếu Private) hoặc Rời khỏi (nếu Public)
+                    // Nếu người dùng chọn "Thay thế" -> Xóa (nếu là Owner) hoặc Rời khỏi (nếu là Guest)
                     foreach (var oldAppt in overlaps)
                     {
-                        if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                        if (oldAppt.OwnerId == userId)
                         {
                             await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                         }
                         else
                         {
-                            // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                            // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                             var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                             if (guest != null)
                             {
@@ -164,7 +168,12 @@ namespace AddCalendarAppointment.Controllers
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-                return Ok(new { suggestTeamJoin = true, appointmentId = result.suggestedAppointmentId, message = "Phát hiện cuộc họp nhóm trùng tên và thời lượng! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?" });
+                return Ok(new
+                {
+                    suggestTeamJoin = true,
+                    appointmentId = result.suggestedAppointmentId,
+                    message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                });
 
             // suggestOverlapReplacement hiện đã được thay thế bằng isOverlap logic ở trên, 
             // nhưng giữ lại để tương thích nếu Service vẫn trả về.
@@ -280,13 +289,13 @@ namespace AddCalendarAppointment.Controllers
                     {
                         foreach (var oldAppt in overlaps)
                         {
-                            if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                            if (oldAppt.OwnerId == userId)
                             {
                                 await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                             }
                             else
                             {
-                                // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                                // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                                 var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                                 if (guest != null)
                                 {
@@ -295,6 +304,21 @@ namespace AddCalendarAppointment.Controllers
                             }
                         }
                         await _context.SaveChangesAsync();
+                    }
+                }
+                // --- THÊM LOGIC CHECK XUNG ĐỘT NHÓM ---
+                var currentAppt = await _context.Appointments.FindAsync(request.Id);
+                if (currentAppt != null && currentAppt.Visibility == VisibilityType.Public && currentAppt.TeamId != null)
+                {
+                    var teamConflict = await _appointmentService.GetTeamConflictAsync(currentAppt.TeamId.Value, currentAppt.Title, newStart, newEnd, request.Id);
+                    if (teamConflict != null)
+                    {
+                        return Ok(new
+                        {
+                            suggestTeamJoin = true,
+                            appointmentId = teamConflict.Id,
+                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                        });
                     }
                 }
                 // --- KẾT THÚC LOGIC CHECK TRÙNG ---
@@ -306,6 +330,13 @@ namespace AddCalendarAppointment.Controllers
 
                 if (appt == null)
                     return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
+
+                // Check group meeting lock
+                var apptWithGuests = await _context.Appointments.Include(a => a.Guests).FirstOrDefaultAsync(a => a.Id == request.Id);
+                if (apptWithGuests != null && apptWithGuests.Visibility == VisibilityType.Public && apptWithGuests.Guests != null && apptWithGuests.Guests.Any(g => g.UserId != apptWithGuests.OwnerId))
+                {
+                    return Ok(new { success = false, message = "Locked: Group meetings with participants cannot be rescheduled." });
+                }
 
                 // Cập nhật thời gian mới
                 appt.StartTime = newStart;
@@ -457,7 +488,7 @@ namespace AddCalendarAppointment.Controllers
 
         // 2. Thêm API xử lý việc Update
         [HttpPost("update")]
-        public async Task<IActionResult> Update([FromBody] UpdateAppointmentRequest req)
+        public async Task<IActionResult>    Update([FromBody] UpdateAppointmentRequest req)
         {
             try
             {
@@ -483,13 +514,13 @@ namespace AddCalendarAppointment.Controllers
                         // Nếu đồng ý "Thay thế" -> Xóa hoặc Rời khỏi lịch bị trùng
                         foreach (var oldAppt in overlaps)
                         {
-                            if (oldAppt.Visibility == VisibilityType.Private && oldAppt.OwnerId == userId)
+                            if (oldAppt.OwnerId == userId)
                             {
                                 await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
                             }
                             else
                             {
-                                // Đối với Group Meeting, chỉ cần xóa khỏi danh sách khách (Unjoin)
+                                // Đối với Group Meeting hoặc Private mà mình là Guest, chỉ cần xóa khỏi danh sách khách (Unjoin)
                                 var guest = oldAppt.Guests.FirstOrDefault(g => g.UserId == userId);
                                 if (guest != null)
                                 {
@@ -501,6 +532,21 @@ namespace AddCalendarAppointment.Controllers
                     }
                 }
 
+                // --- THÊM LOGIC CHECK XUNG ĐỘT NHÓM ---
+                if (req.Visibility == VisibilityType.Public && req.TeamId != null)
+                {
+                    var teamConflict = await _appointmentService.GetTeamConflictAsync(req.TeamId.Value, req.Title, req.StartTime, req.EndTime, req.Id);
+                    if (teamConflict != null)
+                    {
+                        return Ok(new
+                        {
+                            suggestTeamJoin = true,
+                            appointmentId = teamConflict.Id,
+                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                        });
+                    }
+                }
+
                 // Lấy cuộc hẹn CÓ BAO GỒM danh sách Guests từ DB
                 var appt = await _context.Appointments
                     .Include(a => a.Guests)
@@ -508,6 +554,20 @@ namespace AddCalendarAppointment.Controllers
 
                 if (appt == null)
                     return NotFound(new { success = false, message = "Không tìm thấy cuộc hẹn hoặc bạn không có quyền sửa." });
+
+                // MỚI: Kiểm tra khóa Group Meeting
+                bool isLocked = (appt.Visibility == VisibilityType.Public && appt.Guests != null && appt.Guests.Any(g => g.UserId != appt.OwnerId));
+                if (isLocked)
+                {
+                    bool timeChanged = (appt.StartTime != req.StartTime || appt.EndTime != req.EndTime);
+                    bool teamChanged = (appt.TeamId != req.TeamId);
+                    bool visibilityChanged = (appt.Visibility != req.Visibility);
+
+                    if (timeChanged || teamChanged || visibilityChanged)
+                    {
+                        return Ok(new { success = false, message = "Locked: Time, Team, and Visibility cannot be changed for group meetings with participants." });
+                    }
+                }
 
                 // Cập nhật các thông tin cơ bản
                 appt.Title = string.IsNullOrWhiteSpace(req.Title) ? "(No title)" : req.Title;
@@ -522,6 +582,7 @@ namespace AddCalendarAppointment.Controllers
 
                 // --- XỬ LÝ CẬP NHẬT GUESTS ---
                 if (req.GuestEmails == null) req.GuestEmails = new List<string>();
+                if (appt.Guests == null) appt.Guests = new List<AppointmentGuest>();
 
                 // Lấy ra danh sách User tương ứng với mảng Email gửi lên
                 var newGuestUsers = await _context.Users.Where(u => req.GuestEmails.Contains(u.Email)).ToListAsync();
@@ -553,6 +614,101 @@ namespace AddCalendarAppointment.Controllers
                 await _context.SaveChangesAsync();
 
                 return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("unjoin/{id}")]
+        public async Task<IActionResult> Unjoin(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var targetMeeting = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+                if (targetMeeting == null)
+                    return NotFound(new { success = false, message = "Cuộc họp không tồn tại!" });
+
+                // Tìm user trong danh sách khách mời
+                var guest = targetMeeting.Guests.FirstOrDefault(g => g.UserId == userId);
+                if (guest != null)
+                {
+                    // Xóa user khỏi danh sách và lưu lại
+                    _context.AppointmentGuests.Remove(guest);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true });
+                }
+
+                return BadRequest(new { success = false, message = "Bạn không nằm trong danh sách tham gia cuộc họp này." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("accept/{id}")]
+        public async Task<IActionResult> Accept(Guid id, [FromQuery] bool overwriteOverlap = false)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var targetMeeting = await _context.Appointments
+                    .Include(a => a.Guests)
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+                if (targetMeeting == null)
+                    return NotFound(new { success = false, message = "Cuộc họp không tồn tại!" });
+
+                var guest = targetMeeting.Guests.FirstOrDefault(g => g.UserId == userId);
+                if (guest != null)
+                {
+                    // --- KIỂM TRA TRÙNG LỊCH TRƯỚC KHI ACCEPT ---
+                    var overlaps = await _context.Appointments
+                        .Include(a => a.Guests)
+                        .Where(a => !a.IsDeleted
+                                 && a.Id != id
+                                 && (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId && g.Status == GuestStatus.Accepted))
+                                 && a.StartTime < targetMeeting.EndTime && a.EndTime > targetMeeting.StartTime)
+                        .ToListAsync();
+
+                    if (overlaps.Any())
+                    {
+                        if (!overwriteOverlap)
+                        {
+                            return Ok(new { success = false, isOverlap = true, message = "Thời gian này đã có lịch. Bạn có muốn thay thế lịch cũ không?" });
+                        }
+                        else
+                        {
+                            foreach (var oldAppt in overlaps)
+                            {
+                                if (oldAppt.OwnerId == userId)
+                                {
+                                    await _appointmentService.DeleteAppointmentAsync(oldAppt.Id, userId);
+                                }
+                                else
+                                {
+                                    var g = oldAppt.Guests.FirstOrDefault(x => x.UserId == userId);
+                                    if (g != null)
+                                    {
+                                        _context.AppointmentGuests.Remove(g);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    guest.Status = GuestStatus.Accepted;
+                    await _context.SaveChangesAsync();
+                    return Ok(new { success = true });
+                }
+
+                return BadRequest(new { success = false, message = "Bạn không nằm trong danh sách tham gia cuộc họp này." });
             }
             catch (Exception ex)
             {

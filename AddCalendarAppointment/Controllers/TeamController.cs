@@ -53,6 +53,7 @@ namespace AddCalendarAppointment.Controllers
                     .ThenInclude(a => a.Owner)
                 .Include(t => t.Appointments)
                     .ThenInclude(a => a.Guests)
+                        .ThenInclude(g => g.User)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
 
             if (team == null) return NotFound();
@@ -83,8 +84,12 @@ namespace AddCalendarAppointment.Controllers
                     notification = a.Notification ?? "30 minutes before",
                     isJoined = a.Guests != null && a.Guests.Any(g => g.UserId == currentUserId),
                     participants = (a.Guests != null 
-                        ? new[] { a.Owner.Email }.Concat(a.Guests.Select(g => g.User.Email)).ToList()
-                        : new List<string> { a.Owner.Email })
+                        ? new[] { new { email = a.Owner.Email, status = 1 } }
+                          .Concat(a.Guests.Select(g => new { email = g.User.Email, status = (int)g.Status }))
+                          .GroupBy(x => x.email)
+                          .Select(g => g.OrderByDescending(x => x.status).First()) // Ưu tiên Accepted nếu trùng
+                          .ToList()
+                        : (object)new List<object> { new { email = a.Owner.Email, status = 1 } })
                 }).ToList();
 
             return Json(new
@@ -281,6 +286,31 @@ namespace AddCalendarAppointment.Controllers
             }
 
             return Json(new { success = false, message = "Không tìm thấy thành viên này trong nhóm." });
+        }
+
+        // 7. Logic Xóa nhóm (Chỉ trưởng nhóm mới được dùng)
+        [HttpPost]
+        public async Task<IActionResult> DeleteTeam(Guid teamId)
+        {
+            var userIdStr = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userIdStr)) return Json(new { success = false, message = "Lỗi xác thực." });
+            Guid currentUserId = Guid.Parse(userIdStr);
+
+            var team = await _context.Teams
+                .Include(t => t.Appointments)
+                .Include(t => t.Members)
+                .FirstOrDefaultAsync(t => t.Id == teamId);
+
+            if (team == null) return Json(new { success = false, message = "Không tìm thấy nhóm." });
+
+            if (team.OwnerId != currentUserId)
+                return Json(new { success = false, message = "Chỉ trưởng nhóm mới có quyền xóa nhóm." });
+
+            // Xóa nhóm
+            _context.Teams.Remove(team);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
         }
     }
 }
