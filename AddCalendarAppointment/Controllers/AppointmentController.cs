@@ -767,8 +767,8 @@ namespace AddCalendarAppointment.Controllers
                 var notifySpan = ParseNotification(appt.Notification);
                 var alertTime = appt.StartTime.Subtract(notifySpan);
 
-                // Nếu hiện tại đã đến lúc thông báo
-                if (now >= alertTime)
+                // Chỉ thông báo nếu đã tới giờ VÀ giờ thông báo chưa bị trôi qua quá 15 phút.
+                if (now >= alertTime && now <= alertTime.AddMinutes(15))
                 {
                     bool exists = await _context.Reminders.AnyAsync(r => r.AppointmentId == appt.Id && r.UserId == userId);
                     if (!exists)
