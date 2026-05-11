@@ -1427,9 +1427,9 @@ $(document).ready(function () {
     $('#btn-save-event').off('click').on('click', function () {
         let title = $('#popover-title').val();
 
-        // --- LOGIC AUTO (No title) ---
         if (!title || title.trim() === "") {
-            title = "(No title)";
+            alert("Tiêu đề cuộc hẹn không được để trống.");
+            return;
         }
 
         let startDateVal = $('#popover-start-date').val();
@@ -1925,7 +1925,12 @@ $('#btn-save-fs-event').on('click', function () {
     let hiddenId = $('#fs-edit-event-id').val();
     let activeEventId = hiddenId ? hiddenId : (typeof currentEditEventId !== 'undefined' ? currentEditEventId : null);
     if (activeEventId === "") activeEventId = null;
-    let title = $('#fs-title').val() || "(No title)";
+    let title = $('#fs-title').val();
+    if (!title || title.trim() === "") {
+        alert("Tiêu đề cuộc hẹn không được để trống.");
+        $(this).prop('disabled', false).text('Save');
+        return;
+    }
     let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
     let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
 
