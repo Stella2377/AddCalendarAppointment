@@ -2214,29 +2214,30 @@ function updateNotificationBell() {
     sortedAppts.forEach(evt => {
         let mins = getNotifyMinutes(evt.notification);
         if (mins > 0) {
-            count++;
             let startDt = new Date(evt.start);
             let notifyTime = new Date(startDt.getTime() - mins * 60000);
             
-            // Hiện chấm đỏ nếu đã đến giờ thông báo và cuộc hẹn chưa bắt đầu (còn đang đếm ngược)
-            let isNew = false;
-            if (now >= notifyTime && now <= startDt) {
-                isNew = true;
-                if (!dismissedNotifications.has(evt.id)) {
-                    hasNew = true;
-                    currentNewNotifs.push(evt.id);
-                }
+            // --- CHỈ HIỆN NẾU ĐÃ ĐẾN GIỜ THÔNG BÁO (Không hiện tương lai) ---
+            if (now < notifyTime) return;
+
+            count++;
+            
+            // Hiện chấm đỏ nếu đã đến giờ thông báo và chưa bấm xem (dismissedNotifications)
+            let isNew = !dismissedNotifications.has(evt.id);
+            if (isNew) {
+                hasNew = true;
+                currentNewNotifs.push(evt.id);
             }
 
             let typeStr = evt.visibility == 1 ? `Group Meeting${evt.teamName ? ' - ' + evt.teamName : ''}` : 'Private';
             let iconClass = evt.visibility == 1 ? 'fa-users' : 'fa-lock';
             
             html += `
-                <li class="p-2 border-bottom" style="background-color: ${isNew && !dismissedNotifications.has(evt.id) ? '#f8f9fa' : '#fff'};">
+                <li class="p-2 border-bottom" style="background-color: ${isNew ? '#f8f9fa' : '#fff'};">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="ms-2 me-auto">
                             <div class="fw-bold" style="font-size: 14px; color: ${evt.color};">
-                                ${isNew && !dismissedNotifications.has(evt.id) ? '<span class="badge bg-danger me-1">New</span>' : ''}
+                                ${isNew ? '<span class="badge bg-danger me-1">New</span>' : ''}
                                 ${evt.title || '(No title)'}
                             </div>
                             <div class="text-muted" style="font-size: 12px;">
