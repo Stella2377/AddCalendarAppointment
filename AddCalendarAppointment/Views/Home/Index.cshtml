@@ -79,7 +79,7 @@
 
         <!-- Guests -->
         <div class="d-flex align-items-start mb-3 px-3">
-            <div class="me-3 mt-1 text-muted"><i class="bi bi-people fs-5"></i></div>
+            <div class="me-3 mt-1 text-muted" style="width: 24px; text-align: center;"><i class="fas fa-user-friends"></i></div>
             <div class="flex-grow-1">
                 <!-- Nơi chứa các tag Guest đã thêm -->
                 <div id="guest-badges-container" class="mb-1 d-flex flex-wrap gap-1"></div>
@@ -92,17 +92,17 @@
 
         <!-- Location & Description -->
         <div class="d-flex align-items-center mb-3 px-3">
-            <div class="me-3 text-muted"><i class="bi bi-geo-alt fs-5"></i></div>
+            <div class="me-3 text-muted" style="width: 24px; text-align: center;"><i class="fas fa-map-marker-alt"></i></div>
             <input type="text" id="popover-location" class="form-control form-control-sm border-0 bg-light" placeholder="Add location">
         </div>
         <div class="d-flex align-items-center mb-3 px-3">
-            <div class="me-3 text-muted"><i class="bi bi-justify-left fs-5"></i></div>
+            <div class="me-3 text-muted" style="width: 24px; text-align: center;"><i class="fas fa-align-left"></i></div>
             <input type="text" id="popover-description" class="form-control form-control-sm border-0 bg-light" placeholder="Add description">
         </div>
 
         <!-- Section chọn Team (mặc định ẩn) -->
         <div id="team-selection-row" class="d-none align-items-center mb-3 px-3">
-            <div class="me-3 text-muted"><i class="bi bi-people fs-5"></i></div>
+            <div class="me-3 text-muted"><i class="fas fa-users fs-5"></i></div>
             <select id="team-dropdown" class="form-select form-select-sm border-0 bg-light w-100">
                 <option value="">-- Select Team --</option>
             </select>
@@ -110,16 +110,13 @@
 
         <!-- Lịch & Thông báo -->
         <div class="d-flex align-items-start mb-2 px-3">
-            <div class="me-3 mt-1 text-muted"><i class="bi bi-calendar2-event fs-5"></i></div>
+            <div class="me-3 mt-1 text-muted" style="width: 24px; text-align: center;"><i class="fas fa-calendar-alt"></i></div>
             <div class="flex-grow-1">
-                
-                <!-- ĐÃ SỬA: Dropdown Chọn Lịch (Gộp chung Màu và Tên) -->
+                <!-- Dropdown Chọn Lịch -->
                 <div class="d-flex gap-2 mb-2">
-                    <select id="popover-color-select" class="form-select form-select-sm border-0 bg-light w-100" style="font-weight: 500;">
-                        <!-- JS sẽ tự động lấy dữ liệu từ Sidebar đổ vào đây -->
-                    </select>
+                    <select id="popover-color-select" class="form-select form-select-sm border-0 bg-light w-100" style="font-weight: 500;"></select>
                 </div>
-                
+                
                 <div class="d-flex gap-2 mb-3">
                     <select class="form-select form-select-sm border-0 bg-light w-auto text-muted"><option>Busy</option><option>Free</option></select>
                     <select id="popover-visibility" class="form-select form-select-sm border-0 bg-light w-auto text-muted">
@@ -127,20 +124,35 @@
                         <option value="1">Group Meeting</option>
                     </select>
                 </div>
+            </div>
+        </div>
 
-                <!-- Danh sách Notification -->
+        <!-- Notification Row -->
+        <div class="d-flex align-items-start mb-2 px-3">
+            <div class="me-3 mt-1 text-muted" style="width: 24px; text-align: center;"><i class="fas fa-bell"></i></div>
+            <div class="flex-grow-1">
                 <div id="notification-list">
                     <div class="d-flex gap-2 mb-2 notification-item align-items-center">
-                        <i class="bi bi-bell text-muted me-1"></i>
-                        <select class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                            <option>30 minutes before</option>
-                            <option>10 minutes before</option>
-                            <option>1 hour before</option>
+                        <select class="form-select form-select-sm border-0 bg-light w-auto text-muted notify-type">
+                            <option value="None">None</option>
+                            <option value="10 minutes before">10 minutes before</option>
+                            <option value="30 minutes before" selected>30 minutes before</option>
+                            <option value="1 hour before">1 hour before</option>
+                            <option value="Custom">Custom</option>
                         </select>
-                        <button type="button" class="btn btn-sm text-muted btn-remove-notify"><i class="bi bi-x"></i></button>
+                        <div class="custom-notify-inputs d-none align-items-center gap-1">
+                            <input type="number" class="form-control form-control-sm w-auto custom-val" value="30" min="1" style="width: 60px !important;">
+                            <select class="form-select form-select-sm border-0 bg-light w-auto custom-unit">
+                                <option value="minutes">minutes</option>
+                                <option value="hours">hours</option>
+                                <option value="days">days</option>
+                                <option value="weeks">weeks</option>
+                                <option value="months">months</option>
+                            </select>
+                            <span class="text-muted small">before</span>
+                        </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 mt-1" id="btn-add-notification">Add notification</button>
             </div>
         </div>
     </div>
@@ -315,11 +327,26 @@
                         <!-- Notification -->
                         <div class="d-flex align-items-center mb-4">
                             <div class="text-muted me-3" style="width: 24px; text-align: center;"><i class="fas fa-bell fs-5"></i></div>
-                            <select id="fs-notification" class="form-select bg-light border-0 w-auto">
-                                <option value="10 minutes before">10 minutes before</option>
-                                <option value="30 minutes before" selected>30 minutes before</option>
-                                <option value="1 hour before">1 hour before</option>
-                            </select>
+                            <div class="d-flex align-items-center gap-2">
+                                <select id="fs-notification" class="form-select bg-light border-0 w-auto notify-type">
+                                    <option value="None">None</option>
+                                    <option value="10 minutes before">10 minutes before</option>
+                                    <option value="30 minutes before" selected>30 minutes before</option>
+                                    <option value="1 hour before">1 hour before</option>
+                                    <option value="Custom">Custom</option>
+                                </select>
+                                <div class="custom-notify-inputs d-none align-items-center gap-1">
+                                    <input type="number" class="form-control w-auto custom-val" value="30" min="1" style="width: 80px !important;">
+                                    <select class="form-select border-0 bg-light w-auto custom-unit">
+                                        <option value="minutes">minutes</option>
+                                        <option value="hours">hours</option>
+                                        <option value="days">days</option>
+                                        <option value="weeks">weeks</option>
+                                        <option value="months">months</option>
+                                    </select>
+                                    <span class="text-muted">before</span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Calendar/Owner & Status -->

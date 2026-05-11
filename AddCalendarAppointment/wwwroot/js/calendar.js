@@ -164,76 +164,6 @@ $(document).ready(function () {
     });
 
     // Ràng buộc giờ kết thúc phải sau giờ bắt đầu
-    function syncEndTimeMin() {
-        // Cho Mini Popover
-        let popStartDate = $('#popover-start-date').val();
-        let popStartTime = $('#popover-start-time').val();
-        let popEndTime = $('#popover-end-time').val();
-
-        if (popStartTime && popEndTime) {
-            let [startH] = popStartTime.split(':').map(Number);
-            let [endH] = popEndTime.split(':').map(Number);
-
-            // Logic PM -> AM sáng hôm sau
-            if (startH >= 12 && endH < 12) {
-                let d = new Date(popStartDate);
-                d.setDate(d.getDate() + 1);
-                let edStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                $('#popover-end-date').val(edStr).show();
-            } else {
-                // Nếu không rơi vào case đêm, kiểm tra Start > End cùng ngày
-                if (popStartTime > popEndTime) {
-                    let [h, m] = popStartTime.split(':').map(Number);
-                    let d = new Date();
-                    d.setHours(h, m + 90);
-                    $('#popover-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-                    
-                    if (d.getHours() < h) { // Wrap qua ngày mới
-                        let ed = new Date(popStartDate); ed.setDate(ed.getDate() + 1);
-                        $('#popover-end-date').val(ed.toISOString().split('T')[0]).show();
-                    } else {
-                        $('#popover-end-date').val(popStartDate).hide();
-                    }
-                } else {
-                    $('#popover-end-date').val(popStartDate).hide();
-                }
-            }
-        }
-
-        // Cho Full Screen Modal
-        let fsStartDate = $('#fs-start-date').val();
-        let fsEndDate = $('#fs-end-date').val();
-        let fsStartTime = $('#fs-start-time').val();
-        let fsEndTime = $('#fs-end-time').val();
-
-        if (fsStartTime && fsEndTime) {
-            let [startH] = fsStartTime.split(':').map(Number);
-            let [endH] = fsEndTime.split(':').map(Number);
-
-            if (fsStartDate === fsEndDate && startH >= 12 && endH < 12) {
-                let d = new Date(fsStartDate);
-                d.setDate(d.getDate() + 1);
-                $('#fs-end-date').val(d.toISOString().split('T')[0]);
-            } else if (fsStartDate === fsEndDate && fsStartTime > fsEndTime) {
-                let [h, m] = fsStartTime.split(':').map(Number);
-                let d = new Date();
-                d.setHours(h, m + 90);
-                $('#fs-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-                if (d.getHours() < h) {
-                    let ed = new Date(fsStartDate); ed.setDate(ed.getDate() + 1);
-                    $('#fs-end-date').val(ed.toISOString().split('T')[0]);
-                }
-            }
-        }
-        
-        // Luôn cập nhật min attribute cho HTML5 picker
-        if (fsStartDate === fsEndDate) $('#fs-end-time').attr('min', fsStartTime);
-        else $('#fs-end-time').removeAttr('min');
-        
-        if ($('#popover-start-date').val() === $('#popover-end-date').val()) $('#popover-end-time').attr('min', popStartTime);
-        else $('#popover-end-time').removeAttr('min');
-    }
-
     $(document).on('change', '#popover-start-time, #popover-end-time', syncEndTimeMin);
     $(document).on('change', '#fs-start-time, #fs-start-date, #fs-end-date, #fs-end-time', syncEndTimeMin);
 
@@ -261,10 +191,77 @@ $(document).ready(function () {
         }
         syncEndTimeMin();
     });
-
-    // Xuất hàm ra global để dùng trong các handler khác nếu cần
-    window.syncEndTimeMin = syncEndTimeMin;
 });
+
+function syncEndTimeMin() {
+    // Cho Mini Popover
+    let popStartDate = $('#popover-start-date').val();
+    let popStartTime = $('#popover-start-time').val();
+    let popEndTime = $('#popover-end-time').val();
+
+    if (popStartTime && popEndTime) {
+        let [startH] = popStartTime.split(':').map(Number);
+        let [endH] = popEndTime.split(':').map(Number);
+
+        // Logic PM -> AM sáng hôm sau
+        if (startH >= 12 && endH < 12) {
+            let d = new Date(popStartDate);
+            d.setDate(d.getDate() + 1);
+            let edStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            $('#popover-end-date').val(edStr).show();
+        } else {
+            // Nếu không rơi vào case đêm, kiểm tra Start > End cùng ngày
+            if (popStartTime > popEndTime) {
+                let [h, m] = popStartTime.split(':').map(Number);
+                let d = new Date();
+                d.setHours(h, m + 90);
+                $('#popover-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+                
+                if (d.getHours() < h) { // Wrap qua ngày mới
+                    let ed = new Date(popStartDate); ed.setDate(ed.getDate() + 1);
+                    $('#popover-end-date').val(ed.toISOString().split('T')[0]).show();
+                } else {
+                    $('#popover-end-date').val(popStartDate).hide();
+                }
+            } else {
+                $('#popover-end-date').val(popStartDate).hide();
+            }
+        }
+    }
+
+    // Cho Full Screen Modal
+    let fsStartDate = $('#fs-start-date').val();
+    let fsEndDate = $('#fs-end-date').val();
+    let fsStartTime = $('#fs-start-time').val();
+    let fsEndTime = $('#fs-end-time').val();
+
+    if (fsStartTime && fsEndTime) {
+        let [startH] = fsStartTime.split(':').map(Number);
+        let [endH] = fsEndTime.split(':').map(Number);
+
+        if (fsStartDate === fsEndDate && startH >= 12 && endH < 12) {
+            let d = new Date(fsStartDate);
+            d.setDate(d.getDate() + 1);
+            $('#fs-end-date').val(d.toISOString().split('T')[0]);
+        } else if (fsStartDate === fsEndDate && fsStartTime > fsEndTime) {
+            let [h, m] = fsStartTime.split(':').map(Number);
+            let d = new Date();
+            d.setHours(h, m + 90);
+            $('#fs-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+            if (d.getHours() < h) {
+                let ed = new Date(fsStartDate); ed.setDate(ed.getDate() + 1);
+                $('#fs-end-date').val(ed.toISOString().split('T')[0]);
+            }
+        }
+    }
+    
+    // Luôn cập nhật min attribute cho HTML5 picker
+    if (fsStartDate === fsEndDate) $('#fs-end-time').attr('min', fsStartTime);
+    else $('#fs-end-time').removeAttr('min');
+    
+    if ($('#popover-start-date').val() === $('#popover-end-date').val()) $('#popover-end-time').attr('min', popStartTime);
+    else $('#popover-end-time').removeAttr('min');
+}
 
 // ==========================================
 // HÀM VẼ LƯỚI LỊCH CHÍNH (MAIN CALENDAR) - MỚI BỔ SUNG
@@ -1403,24 +1400,76 @@ $(document).ready(function () {
         $(this).parent().remove();
     });
 
-    // 5. THÊM NHIỀU NOTIFICATION
-    $('#btn-add-notification').on('click', function () {
-        let newNotify = `
-            <div class="d-flex gap-2 mb-2 notification-item align-items-center">
-                <i class="bi bi-bell text-muted me-1"></i>
-                <select class="form-select form-select-sm border-0 bg-light w-auto text-muted">
-                    <option>10 minutes before</option>
-                    <option>30 minutes before</option>
-                    <option>1 hour before</option>
-                </select>
-                <button type="button" class="btn btn-sm text-muted btn-remove-notify"><i class="bi bi-x"></i></button>
-            </div>
-        `;
-        $('#notification-list').append(newNotify);
+
+
+    // Xử lý ẩn hiện custom notification
+    $(document).on('change', '.notify-type', function () {
+        let val = $(this).val();
+        let $container = $(this).siblings('.custom-notify-inputs');
+        if (val === 'Custom') {
+            $container.removeClass('d-none').addClass('d-flex');
+        } else {
+            $container.addClass('d-none').removeClass('d-flex');
+        }
     });
 
-    $(document).on('click', '.btn-remove-notify', function () {
-        $(this).closest('.notification-item').remove();
+    // 5. MỞ FULL SCREEN TỪ "MORE OPTIONS" CỦA FORM TẠO (Mini Popover)
+    $(document).on('mousedown', '#btn-more-options', function (e) {
+        e.stopPropagation();
+    });
+
+    $(document).on('click', '#btn-more-options', function (e) {
+        e.preventDefault();
+        e.stopPropagation(); // Ngăn chặn sự kiện lan ra ngoài gây ẩn popover sớm
+        
+        currentEditEventId = null; // Đang tạo mới
+
+        // Reset disabled fields
+        $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
+
+        // Bê dữ liệu từ mini popover sang
+        $('#fs-title').val($('#popover-title').val());
+        $('#fs-start-date').val($('#popover-start-date').val());
+        $('#fs-end-date').val($('#popover-start-date').val()); // Cùng ngày
+        $('#fs-start-time').val($('#popover-start-time').val());
+        $('#fs-end-time').val($('#popover-end-time').val());
+        $('#fs-location').val($('#popover-location').val());
+        $('#fs-description').val($('#popover-description').val());
+        
+        let $firstNotify = $('#notification-list .notification-item').first();
+        let popoverNotify = $firstNotify.length > 0 ? getNotificationString($firstNotify) : "30 minutes before";
+
+        $('#fs-notification').val(popoverNotify);
+        if (popoverNotify && !['None', '10 minutes before', '30 minutes before', '1 hour before'].includes(popoverNotify)) {
+            $('#fs-notification').val('Custom').trigger('change');
+            let parts = popoverNotify.split(' ');
+            if (parts.length >= 2) {
+                $('#fs-notification').siblings('.custom-notify-inputs').find('.custom-val').val(parts[0]);
+                $('#fs-notification').siblings('.custom-notify-inputs').find('.custom-unit').val(parts[1]);
+            }
+        } else {
+            $('#fs-notification').trigger('change');
+        }
+        $('#fs-visibility').val($('#popover-visibility').val());
+
+        // Chuyển TeamId sang Full Screen
+        if ($('#popover-visibility').val() === "1") {
+            let teamId = $('#team-dropdown').val();
+            let teamHtml = $('#team-dropdown').html();
+            $('#fs-team-dropdown').html(teamHtml).val(teamId);
+            $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
+        } else {
+            $('#fs-team-selection-row').addClass('d-none').removeClass('d-flex');
+        }
+
+        setupFsColorDropdown($('#popover-color-select').val());
+
+        fsGuestEmails = [...guestEmails]; // Copy array guest
+        renderFsGuests();
+
+        syncEndTimeMin();
+        $('#event-popover').hide();
+        $('#fullScreenEventModal').modal('show');
     });
 
     // 6. GỬI DỮ LIỆU XUỐNG DB
@@ -1445,7 +1494,7 @@ $(document).ready(function () {
             return;
         }
 
-        let selectedNotification = $('#notification-list select').first().val() || "30 minutes before";
+        let selectedNotification = getNotificationString($('#notification-list .notification-item').first()) || "30 minutes before";
 
         let appointmentData = {
             Title: title,
@@ -1573,6 +1622,16 @@ function toLocalISOString(date) {
     const pad = n => n < 10 ? '0' + n : n;
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' +
         pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+}
+
+function getNotificationString($item) {
+    let type = $item.find('.notify-type').val();
+    if (type === 'Custom') {
+        let val = $item.find('.custom-val').val();
+        let unit = $item.find('.custom-unit').val();
+        return `${val} ${unit} before`;
+    }
+    return type;
 }
 
 
@@ -1815,44 +1874,7 @@ $('#fs-guests-input').on('input', function () {
     }
 });
 
-// 3. MỞ FULL SCREEN TỪ "MORE OPTIONS" CỦA FORM TẠO (Mini Popover)
-$(document).on('click', '#btn-more-options', function (e) {
-    e.preventDefault();
-    currentEditEventId = null; // Đang tạo mới
 
-    // Reset disabled fields
-    $('#fs-start-date, #fs-start-time, #fs-end-date, #fs-end-time, #fs-team-dropdown, #fs-visibility').prop('disabled', false);
-
-    // Bê dữ liệu từ mini popover sang
-    $('#fs-title').val($('#popover-title').val());
-    $('#fs-start-date').val($('#popover-start-date').val());
-    $('#fs-end-date').val($('#popover-start-date').val()); // Cùng ngày
-    $('#fs-start-time').val($('#popover-start-time').val());
-    $('#fs-end-time').val($('#popover-end-time').val());
-    $('#fs-location').val($('#popover-location').val());
-    $('#fs-description').val($('#popover-description').val());
-    $('#fs-notification').val($('#notification-list select').first().val() || "30 minutes before");
-    $('#fs-visibility').val($('#popover-visibility').val());
-
-    // Chuyển TeamId sang Full Screen
-    if ($('#popover-visibility').val() === "1") {
-        let teamId = $('#team-dropdown').val();
-        let teamHtml = $('#team-dropdown').html();
-        $('#fs-team-dropdown').html(teamHtml).val(teamId);
-        $('#fs-team-selection-row').removeClass('d-none').addClass('d-flex');
-    } else {
-        $('#fs-team-selection-row').addClass('d-none').removeClass('d-flex');
-    }
-
-    setupFsColorDropdown($('#popover-color-select').val());
-
-    fsGuestEmails = [...guestEmails]; // Copy array guest
-    renderFsGuests();
-
-    $('#event-popover').hide();
-    syncEndTimeMin();
-    $('#fullScreenEventModal').modal('show');
-});
 
 // 4. MỞ FULL SCREEN TỪ "CÂY BÚT" CỦA FORM CHI TIẾT SỰ KIỆN ĐÃ CÓ
 $(document).on('click', '#btn-edit-event', function (e) {
@@ -1883,7 +1905,18 @@ $(document).on('click', '#btn-edit-event', function (e) {
 
     $('#fs-location').val($block.data('location'));
     $('#fs-description').val($block.data('description'));
-    $('#fs-notification').val($block.data('notification') || "30 minutes before");
+    let existingNotify = $block.data('notification') || "30 minutes before";
+    $('#fs-notification').val(existingNotify);
+    if (existingNotify && !['None', '10 minutes before', '30 minutes before', '1 hour before'].includes(existingNotify)) {
+        $('#fs-notification').val('Custom').trigger('change');
+        let parts = existingNotify.split(' ');
+        if (parts.length >= 2) {
+            $('#fs-notification').siblings('.custom-notify-inputs').find('.custom-val').val(parts[0]);
+            $('#fs-notification').siblings('.custom-notify-inputs').find('.custom-unit').val(parts[1]);
+        }
+    } else {
+        $('#fs-notification').trigger('change');
+    }
 
     setupFsColorDropdown($block.data('color'));
 
@@ -1956,7 +1989,7 @@ $('#btn-save-fs-event').on('click', function () {
         Description: $('#fs-description').val(),
         ColorCategory: $('#fs-color-select').val(),
         Visibility: parseInt($('#fs-visibility').val() || "0"),
-        Notification: $('#fs-notification').val(),
+        Notification: getNotificationString($('#fullScreenEventModal')),
         GuestEmails: fsGuestEmails,
         TeamId: (parseInt($('#fs-visibility').val()) === 1) ? ($('#fs-team-dropdown').val() || null) : null
         // GuestPermissions: guestPermissions // Tùy chọn mở rộng cho DB của bạn
@@ -2124,10 +2157,23 @@ let dismissedNotifications = new Set();
 let currentNewNotifs = [];
 
 function getNotifyMinutes(notifyStr) {
-    if (!notifyStr) return 0;
-    if (notifyStr.includes("10 minutes")) return 10;
-    if (notifyStr.includes("30 minutes")) return 30;
-    if (notifyStr.includes("1 hour")) return 60;
+    if (!notifyStr || notifyStr === "None") return 0;
+    
+    let parts = notifyStr.split(' ');
+    if (parts.length < 2) return 0;
+    
+    let val = parseInt(parts[0]);
+    let unit = parts[1].toLowerCase();
+    
+    if (isNaN(val)) return 0;
+    
+    if (unit.includes("minute")) return val;
+    if (unit.includes("hour")) return val * 60;
+    if (unit.includes("day")) return val * 1440;
+    if (unit.includes("week")) return val * 10080;
+    if (unit.includes("month")) return val * 43200;
+    if (unit.includes("year")) return val * 525600;
+    
     return 0;
 }
 
