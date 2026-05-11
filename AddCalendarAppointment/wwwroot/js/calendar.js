@@ -2272,7 +2272,7 @@ setInterval(function() {
     if (globalAppointments.length > 0) {
         updateNotificationBell();
     }
-}, 60000);
+}, 15000);
 
 // Khi click vào chuông thì ẩn dấu chấm đỏ và đánh dấu đã đọc
 $(document).on('click', '#notificationDropdown', function() {
