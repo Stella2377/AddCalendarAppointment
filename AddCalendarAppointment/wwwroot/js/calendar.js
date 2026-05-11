@@ -696,28 +696,34 @@ $(document).on('drop', '.day-col', function (e) {
         success: function (res) {
             // 1. Check trùng lịch Team (Group Meeting)
             if (res.suggestTeamJoin) {
-                if (confirm(res.message)) {
-                    $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
-                        if (joinRes.success) {
-                            // Người dùng đồng ý tham gia -> Xóa lịch cũ đang kéo để tránh rác dữ liệu
-                            $.ajax({
-                                url: '/api/Appointment/delete/' + currentId,
-                                type: 'DELETE',
-                                success: function () {
-                                    alert("Đã tham gia cuộc họp nhóm thành công!");
-                                    loadAppointments();
-                                }
-                            });
-                        } else {
-                            alert("Tham gia thất bại: " + joinRes.message);
-                            loadAppointments(); // Reset lịch về vị trí cũ
-                        }
-                    });
-                } else {
-                    // Người dùng Cancel
-                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
-                    loadAppointments(); // Reset lịch về vị trí cũ
-                }
+                promptConflictSelection(res.conflicts,
+                    function (selectedIds) {
+                        // Chạy API join cho tất cả ID được chọn
+                        let promises = selectedIds.map(id => $.post(`/api/Appointment/join/${id}`));
+
+                        Promise.all(promises).then(results => {
+                            let hasError = results.some(r => !r.success);
+                            if (!hasError) {
+                                // Xóa sự kiện cũ đang kéo thả
+                                $.ajax({
+                                    url: '/api/Appointment/delete/' + currentId,
+                                    type: 'DELETE',
+                                    success: function () {
+                                        alert("Đã tham gia các cuộc họp nhóm thành công!");
+                                        loadAppointments();
+                                    }
+                                });
+                            } else {
+                                alert("Có lỗi xảy ra khi tham gia một số cuộc họp!");
+                                loadAppointments();
+                            }
+                        });
+                    },
+                    function () {
+                        alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                        loadAppointments();
+                    }
+                );
                 return;
             }
 
@@ -1023,27 +1029,33 @@ $(document).ready(function () {
                 success: function (res) { 
                     // Check trùng lịch Team
                     if (res.suggestTeamJoin) {
-                        if (confirm(res.message)) {
-                            $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
-                                if (joinRes.success) {
-                                    // Xóa lịch bị kéo giãn để tránh rác
-                                    $.ajax({
-                                        url: '/api/Appointment/delete/' + resizeId,
-                                        type: 'DELETE',
-                                        success: function () {
-                                            alert("Đã tham gia cuộc họp nhóm thành công!");
-                                            loadAppointments();
-                                        }
-                                    });
-                                } else {
-                                    alert("Tham gia thất bại: " + joinRes.message);
-                                    loadAppointments();
-                                }
-                            });
-                        } else {
-                            alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
-                            loadAppointments(); // Trả lại kích thước cũ
-                        }
+                        promptConflictSelection(res.conflicts,
+                            function (selectedIds) {
+                                let promises = selectedIds.map(id => $.post(`/api/Appointment/join/${id}`));
+
+                                Promise.all(promises).then(results => {
+                                    let hasError = results.some(r => !r.success);
+                                    if (!hasError) {
+                                        // Xóa sự kiện gốc bị kéo giãn
+                                        $.ajax({
+                                            url: '/api/Appointment/delete/' + resizeId,
+                                            type: 'DELETE',
+                                            success: function () {
+                                                alert("Đã tham gia các cuộc họp nhóm thành công!");
+                                                loadAppointments();
+                                            }
+                                        });
+                                    } else {
+                                        alert("Có lỗi xảy ra khi tham gia một số cuộc họp!");
+                                        loadAppointments();
+                                    }
+                                });
+                            },
+                            function () {
+                                alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục dời lịch.");
+                                loadAppointments();
+                            }
+                        );
                         return;
                     }
 
@@ -1471,23 +1483,29 @@ $(document).ready(function () {
             data: JSON.stringify(appointmentData),
             success: function (res) {
                 if (res.suggestTeamJoin) {
-                    if (confirm(res.message)) {
-                        $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
-                            if (joinRes.success) {
-                                $('#event-popover').hide();
-                                $('.appointment-ghost').remove();
-                                $ghostEvent = null;
-                                alert("Đã tham gia cuộc họp nhóm thành công!");
-                                loadAppointments();
-                            } else {
-                                alert("Tham gia thất bại: " + joinRes.message);
-                            }
-                        });
-                    } else {
-                        // Người dùng nhấn Cancel từ chối Join
-                        alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
-                    }
-                    $('#btn-save-event').prop('disabled', false).text('Save');
+                    promptConflictSelection(res.conflicts,
+                        function (selectedIds) {
+                            let promises = selectedIds.map(id => $.post(`/api/Appointment/join/${id}`));
+
+                            Promise.all(promises).then(results => {
+                                let hasError = results.some(r => !r.success);
+                                if (!hasError) {
+                                    $('#event-popover').hide();
+                                    $('.appointment-ghost').remove();
+                                    $ghostEvent = null;
+                                    alert("Đã tham gia các cuộc họp nhóm thành công!");
+                                    loadAppointments();
+                                } else {
+                                    alert("Có lỗi xảy ra khi tham gia một số cuộc họp!");
+                                }
+                                $('#btn-save-event').prop('disabled', false).text('Save');
+                            });
+                        },
+                        function () {
+                            alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
+                            $('#btn-save-event').prop('disabled', false).text('Save');
+                        }
+                    );
                     return;
                 }
 
@@ -1974,21 +1992,27 @@ $('#btn-save-fs-event').on('click', function () {
         data: JSON.stringify(appointmentData),
         success: function (res) {
             if (res.suggestTeamJoin) {
-                if (confirm(res.message)) {
-                    $.post(`/api/Appointment/join/${res.appointmentId}`, function (joinRes) {
-                        if (joinRes.success) {
-                            $('#fullScreenEventModal').modal('hide');
-                            alert("Đã tham gia cuộc họp nhóm thành công!");
-                            loadAppointments();
-                        } else {
-                            alert("Tham gia thất bại: " + joinRes.message);
-                        }
-                    });
-                } else {
-                    // Người dùng nhấn Cancel từ chối Join
-                    alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
-                }
-                $(this).prop('disabled', false).text('Save');
+                promptConflictSelection(res.conflicts,
+                    (selectedIds) => { // Giữ nguyên Arrow function
+                        let promises = selectedIds.map(id => $.post(`/api/Appointment/join/${id}`));
+
+                        Promise.all(promises).then(results => {
+                            let hasError = results.some(r => !r.success);
+                            if (!hasError) {
+                                $('#fullScreenEventModal').modal('hide');
+                                alert("Đã tham gia các cuộc họp nhóm thành công!");
+                                loadAppointments();
+                            } else {
+                                alert("Có lỗi xảy ra khi tham gia một số cuộc họp!");
+                            }
+                            $(this).prop('disabled', false).text('Save');
+                        });
+                    },
+                    () => { // Giữ nguyên Arrow function
+                        alert("Vui lòng đổi Tên sự kiện, chọn Giờ khác không chồng lấn, hoặc set quyền về Private để tiếp tục tạo cuộc họp mới.");
+                        $(this).prop('disabled', false).text('Save');
+                    }
+                );
                 return;
             }
 
@@ -2212,3 +2236,47 @@ $(document).on('click', '#notificationDropdown', function() {
     // Bỏ màu nền
     $('#notification-list-container li').css('background-color', '#fff');
 });
+
+// Hàm hiển thị Modal chọn lịch trùng (Hỗ trợ Checkbox - Chọn nhiều)
+function promptConflictSelection(conflicts, onConfirmJoin, onCancel) {
+    let html = '';
+    conflicts.forEach((c) => {
+        // Sử dụng checkbox, mặc định check tất cả
+        html += `
+        <label class="list-group-item d-flex gap-3 align-items-center" style="cursor: pointer;">
+            <input class="form-check-input flex-shrink-0 fs-5 conflict-checkbox" type="checkbox" value="${c.id}" checked>
+            <span>
+                <strong style="color: #1a73e8;">${c.title}</strong><br>
+                <small class="text-muted"><i class="far fa-clock"></i> ${c.time}</small>
+            </span>
+        </label>`;
+    });
+    $('#conflict-list-container').html(html);
+
+    var conflictModal = new bootstrap.Modal(document.getElementById('conflictSelectionModal'));
+    conflictModal.show();
+
+    // Hủy bỏ (Tắt modal)
+    $('#conflictSelectionModal').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+        if (onCancel) onCancel();
+    });
+
+    // Xác nhận tham gia
+    $('#btn-confirm-join-conflict').off('click').on('click', function () {
+        // Thu thập toàn bộ các ID đang được tích checkbox
+        let selectedIds = $('.conflict-checkbox:checked').map(function () {
+            return $(this).val();
+        }).get();
+
+        if (selectedIds.length === 0) {
+            alert("Vui lòng chọn ít nhất 1 cuộc họp để tham gia, hoặc nhấn Hủy bỏ.");
+            return;
+        }
+
+        // Ngăn kích hoạt onCancel khi đã ấn Confirm
+        $('#conflictSelectionModal').off('hidden.bs.modal');
+        conflictModal.hide();
+
+        if (onConfirmJoin) onConfirmJoin(selectedIds); // Truyền mảng các ID đi
+    });
+}
