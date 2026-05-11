@@ -1,5 +1,6 @@
 let currDate = new Date();
 let currentViewMode = 7; // Mặc định là 7 ngày (Week)
+let DEFAULT_DURATION = 90;
 
 // ==========================================
 // QUẢN LÝ BẢNG MÀU VÀ SIDEBAR (MY CALENDARS)
@@ -185,7 +186,7 @@ $(document).ready(function () {
             if (!(startH >= 12 && endH < 12)) {
                 let [h, m] = startTime.split(':').map(Number);
                 let d = new Date();
-                d.setHours(h, m + 90);
+                d.setHours(h, m + DEFAULT_DURATION);
                 $(this).val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
             }
         }
@@ -214,9 +215,9 @@ function syncEndTimeMin() {
             if (popStartTime > popEndTime) {
                 let [h, m] = popStartTime.split(':').map(Number);
                 let d = new Date();
-                d.setHours(h, m + 90);
+                d.setHours(h, m + DEFAULT_DURATION);
                 $('#popover-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-                
+
                 if (d.getHours() < h) { // Wrap qua ngày mới
                     let ed = new Date(popStartDate); ed.setDate(ed.getDate() + 1);
                     $('#popover-end-date').val(ed.toISOString().split('T')[0]).show();
@@ -246,7 +247,7 @@ function syncEndTimeMin() {
         } else if (fsStartDate === fsEndDate && fsStartTime > fsEndTime) {
             let [h, m] = fsStartTime.split(':').map(Number);
             let d = new Date();
-            d.setHours(h, m + 90);
+            d.setHours(h, m + DEFAULT_DURATION);
             $('#fs-end-time').val(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
             if (d.getHours() < h) {
                 let ed = new Date(fsStartDate); ed.setDate(ed.getDate() + 1);
@@ -254,11 +255,11 @@ function syncEndTimeMin() {
             }
         }
     }
-    
+
     // Luôn cập nhật min attribute cho HTML5 picker
     if (fsStartDate === fsEndDate) $('#fs-end-time').attr('min', fsStartTime);
     else $('#fs-end-time').removeAttr('min');
-    
+
     if ($('#popover-start-date').val() === $('#popover-end-date').val()) $('#popover-end-time').attr('min', popStartTime);
     else $('#popover-end-time').removeAttr('min');
 }
@@ -414,7 +415,7 @@ function loadAppointments() {
 
                 while (currentDay <= endDay) {
                     let dateStr = currentDay.getFullYear() + '-' + String(currentDay.getMonth() + 1).padStart(2, '0') + '-' + String(currentDay.getDate()).padStart(2, '0');
-                    
+
                     let topPx = 0;
                     let heightPx = 1440;
 
@@ -496,7 +497,7 @@ function loadAppointments() {
                     cluster.forEach(seg => {
                         let widthPercent = 100 / laneCount;
                         let leftPercent = seg.laneIndex * widthPercent;
-                        
+
                         // Render HTML
                         let evt = seg.evt;
                         let timeString = seg.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
@@ -506,10 +507,10 @@ function loadAppointments() {
                         let guestsJson = evt.guests ? encodeURIComponent(JSON.stringify(evt.guests)) : '%5B%5D';
                         let descStr = evt.description ? evt.description.replace(/"/g, '&quot;') : '';
                         let locHtmlStr = evt.location ? evt.location.replace(/"/g, '&quot;') : '';
-                        
+
                         let isOwner = evt.isCurrentUserOwner;
                         let hasOtherParticipants = (evt.guests && evt.guests.some(g => g !== evt.ownerEmail));
-                        
+
                         let isLocked = false;
                         if (!isOwner) {
                             isLocked = true;
@@ -903,7 +904,7 @@ $(document).ready(function () {
         });
 
         $('#popover-start-date').val(dateStr);
-        $('#popover-end-date').val(dateStr).hide(); 
+        $('#popover-end-date').val(dateStr).hide();
         $('#popover-start-time').val(`${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`);
         $('#popover-end-time').val(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
         syncEndTimeMin();
@@ -1023,7 +1024,7 @@ $(document).ready(function () {
             $.ajax({
                 url: '/api/Appointment/update-time', type: 'POST', contentType: 'application/json',
                 data: JSON.stringify({ Id: resizeId, StartTime: toLocalISOString(finalStart), EndTime: toLocalISOString(finalEnd) }),
-                success: function (res) { 
+                success: function (res) {
                     // Check trùng lịch Team
                     if (res.suggestTeamJoin) {
                         promptConflictSelection(res.conflicts,
@@ -1056,7 +1057,7 @@ $(document).ready(function () {
                         return;
                     }
 
-                    if (res.success) loadAppointments(); 
+                    if (res.success) loadAppointments();
                     else {
                         alert(res.message || "Cập nhật thất bại!");
                         loadAppointments();
@@ -1097,7 +1098,7 @@ $(document).ready(function () {
         let end = new Date(endStr);
         let dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
         let timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-        
+
         let timeStr = `${start.toLocaleDateString('en-US', dateOptions)} • ${start.toLocaleTimeString('en-US', timeOptions)}`;
         if (start.toDateString() === end.toDateString()) {
             timeStr += ` - ${end.toLocaleTimeString('en-US', timeOptions)}`;
@@ -1190,7 +1191,7 @@ $(document).ready(function () {
 
         // --- ẨN/HIỆN NÚT EDIT VÀ TRASH ---
         let guestStatus = parseInt(block.attr('data-gueststatus'));
-        
+
         // Nếu không phải chủ sở hữu (là Guest) -> Không cho sửa bất cứ gì (cả Private và Group Meeting)
         if (!isOwner) {
             $('#btn-edit-event').hide();
@@ -1253,7 +1254,7 @@ $(document).ready(function () {
     });
 
     function acceptInvitation(id, overwriteOverlap = false) {
-        $.post('/api/Appointment/accept/' + id + '?overwriteOverlap=' + overwriteOverlap, function(res) {
+        $.post('/api/Appointment/accept/' + id + '?overwriteOverlap=' + overwriteOverlap, function (res) {
             if (res.isOverlap) {
                 if (confirm(res.message)) {
                     acceptInvitation(id, true);
@@ -1268,14 +1269,14 @@ $(document).ready(function () {
         });
     }
 
-    $('#btn-accept-invite').on('click', function() {
+    $('#btn-accept-invite').on('click', function () {
         let id = $(this).data('id');
         acceptInvitation(id);
     });
 
-    $('#btn-deny-invite').on('click', function() {
+    $('#btn-deny-invite').on('click', function () {
         let id = $(this).data('id');
-        $.post('/api/Appointment/unjoin/' + id, function(res) {
+        $.post('/api/Appointment/unjoin/' + id, function (res) {
             if (res.success) {
                 $('#event-detail-popover').hide();
                 $('.calendar-body-scroll').css('overflow', 'auto');
@@ -1433,7 +1434,7 @@ $(document).ready(function () {
     $(document).on('click', '#btn-more-options', function (e) {
         e.preventDefault();
         e.stopPropagation(); // Ngăn chặn sự kiện lan ra ngoài gây ẩn popover sớm
-        
+
         currentEditEventId = null; // Đang tạo mới
 
         // Reset disabled fields
@@ -1447,7 +1448,7 @@ $(document).ready(function () {
         $('#fs-end-time').val($('#popover-end-time').val());
         $('#fs-location').val($('#popover-location').val());
         $('#fs-description').val($('#popover-description').val());
-        
+
         let $firstNotify = $('#notification-list .notification-item').first();
         let popoverNotify = $firstNotify.length > 0 ? getNotificationString($firstNotify) : "30 minutes before";
 
@@ -1621,16 +1622,16 @@ $(document).ready(function () {
                         html += `<option value="${team.id}">${team.name}</option>`;
                     });
                     $dropdown.html(html);
-                    $row.removeClass('d-none').addClass('d-flex'); 
+                    $row.removeClass('d-none').addClass('d-flex');
                 } else {
                     $dropdown.html('<option value="">No teams found</option>');
                     $row.removeClass('d-none').addClass('d-flex');
                 }
-            }).fail(function() {
+            }).fail(function () {
                 console.error("Failed to load teams");
             });
         } else {
-            $row.addClass('d-none').removeClass('d-flex'); 
+            $row.addClass('d-none').removeClass('d-flex');
             $dropdown.empty().append('<option value="">-- Select Team --</option>');
         }
     });
@@ -1946,10 +1947,10 @@ $(document).on('click', '#btn-edit-event', function (e) {
     let visibility = $block.attr('data-visibility');
     $('#fs-visibility').val(visibility);
     if (visibility === "1") {
-        let teamId = $block.attr('data-teamid') || $block.data('teamid'); 
+        let teamId = $block.attr('data-teamid') || $block.data('teamid');
         // Lưu ý: data-teamid có thể chưa được nhét vào blockHtml ở hàm loadAppointments.
         // Tôi sẽ bổ sung nó vào blockHtml sau.
-        
+
         $.get('/api/Appointment/get-user-teams', function (teams) {
             let html = '<option value="">-- Select Team --</option>';
             if (teams && teams.length > 0) {
@@ -2182,22 +2183,22 @@ let currentNewNotifs = [];
 
 function getNotifyMinutes(notifyStr) {
     if (!notifyStr || notifyStr === "None") return 0;
-    
+
     let parts = notifyStr.split(' ');
     if (parts.length < 2) return 0;
-    
+
     let val = parseInt(parts[0]);
     let unit = parts[1].toLowerCase();
-    
+
     if (isNaN(val)) return 0;
-    
+
     if (unit.includes("minute")) return val;
     if (unit.includes("hour")) return val * 60;
     if (unit.includes("day")) return val * 1440;
     if (unit.includes("week")) return val * 10080;
     if (unit.includes("month")) return val * 43200;
     if (unit.includes("year")) return val * 525600;
-    
+
     return 0;
 }
 
@@ -2216,12 +2217,12 @@ function updateNotificationBell() {
         if (mins > 0) {
             let startDt = new Date(evt.start);
             let notifyTime = new Date(startDt.getTime() - mins * 60000);
-            
+
             // --- CHỈ HIỆN NẾU ĐÃ ĐẾN GIỜ THÔNG BÁO (Không hiện tương lai) ---
             if (now < notifyTime) return;
 
             count++;
-            
+
             // Hiện chấm đỏ nếu đã đến giờ thông báo và chưa bấm xem (dismissedNotifications)
             let isNew = !dismissedNotifications.has(evt.id);
             if (isNew) {
@@ -2231,7 +2232,7 @@ function updateNotificationBell() {
 
             let typeStr = evt.visibility == 1 ? `Group Meeting${evt.teamName ? ' - ' + evt.teamName : ''}` : 'Private';
             let iconClass = evt.visibility == 1 ? 'fa-users' : 'fa-lock';
-            
+
             html += `
                 <li class="p-2 border-bottom" style="background-color: ${isNew ? '#f8f9fa' : '#fff'};">
                     <div class="d-flex justify-content-between align-items-start">
@@ -2244,7 +2245,7 @@ function updateNotificationBell() {
                                 <i class="fas ${iconClass} me-1"></i> ${typeStr}
                             </div>
                             <div class="text-muted mt-1" style="font-size: 12px;">
-                                <i class="fas fa-clock me-1"></i> Bắt đầu: ${startDt.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit'})} (${startDt.toLocaleDateString()})
+                                <i class="fas fa-clock me-1"></i> Bắt đầu: ${startDt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${startDt.toLocaleDateString()})
                             </div>
                         </div>
                         <span class="badge bg-light text-dark border ms-2" style="font-size: 11px; white-space: nowrap;">${evt.notification}</span>
@@ -2268,14 +2269,14 @@ function updateNotificationBell() {
 }
 
 // Kiểm tra định kỳ mỗi phút
-setInterval(function() {
+setInterval(function () {
     if (globalAppointments.length > 0) {
         updateNotificationBell();
     }
 }, 15000);
 
 // Khi click vào chuông thì ẩn dấu chấm đỏ và đánh dấu đã đọc
-$(document).on('click', '#notificationDropdown', function() {
+$(document).on('click', '#notificationDropdown', function () {
     $('#notification-badge').addClass('d-none');
     currentNewNotifs.forEach(id => dismissedNotifications.add(id));
     // Xóa chữ "New" trên giao diện ngay lập tức

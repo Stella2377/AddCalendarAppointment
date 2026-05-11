@@ -20,6 +20,7 @@ namespace AddCalendarAppointment.Services
 
     public class AppointmentService
     {
+        public const int DefaultDurationMinutes = 90;
         private readonly ApplicationDbContext _context;
 
         public AppointmentService(ApplicationDbContext context)
@@ -50,7 +51,7 @@ namespace AddCalendarAppointment.Services
         public async Task<TimeSpan> GetUserDefaultDurationAsync(Guid userId)
         {
             var settings = await _context.UserSettings.FirstOrDefaultAsync(u => u.UserId == userId);
-            int minutes = settings?.DefaultDuration ?? 60;
+            int minutes = settings?.DefaultDuration ?? DefaultDurationMinutes;
             return TimeSpan.FromMinutes(minutes);
         }
 
