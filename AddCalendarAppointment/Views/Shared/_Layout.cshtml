@@ -239,6 +239,26 @@
 		</div>
 	</div>
 
+	<div class="modal fade" id="conflictSelectionModal" tabindex="-1" aria-hidden="true" style="z-index: 1075;">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title text-primary"><i class="fas fa-layer-group me-2"></i>Chọn nhóm để tham gia</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<p class="text-muted small">Phát hiện các cuộc họp nhóm trùng tên đang diễn ra trong khung giờ này. Vui lòng chọn cuộc họp bạn muốn tham gia:</p>
+					<div id="conflict-list-container" class="list-group mb-3">
+						</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+					<button type="button" class="btn btn-primary" id="btn-confirm-join-conflict">Xác nhận tham gia</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<!-- ================= JAVASCRIPT XỬ LÝ ĐỔI MẬT KHẨU ================= -->
 	<script>
 		document.getElementById('btnSubmitChangePassword').addEventListener('click', function () {

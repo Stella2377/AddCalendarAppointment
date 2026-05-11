@@ -173,12 +173,15 @@ namespace AddCalendarAppointment.Controllers
             var result = await _appointmentService.CreateAppointmentAsync(appointment, userId);
 
             if (result.suggestTeamJoin)
-                return Ok(new
-                {
-                    suggestTeamJoin = true,
-                    appointmentId = result.suggestedAppointmentId,
-                    message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
-                });
+            {
+                var conflictList = result.suggestedAppointments.Select(c => new {
+                    id = c.Id,
+                    title = c.Title,
+                    time = $"{c.StartTime:HH:mm} - {c.EndTime:HH:mm} ({c.StartTime:dd/MM/yyyy})"
+                }).ToList();
+
+                return Ok(new { suggestTeamJoin = true, conflicts = conflictList });
+            }
 
             // suggestOverlapReplacement hiện đã được thay thế bằng isOverlap logic ở trên, 
             // nhưng giữ lại để tương thích nếu Service vẫn trả về.
@@ -320,14 +323,13 @@ namespace AddCalendarAppointment.Controllers
                 var currentAppt = await _context.Appointments.FindAsync(request.Id);
                 if (currentAppt != null && currentAppt.Visibility == VisibilityType.Public && currentAppt.TeamId != null)
                 {
-                    var teamConflict = await _appointmentService.GetTeamConflictAsync(currentAppt.TeamId.Value, currentAppt.Title, newStart, newEnd, request.Id);
-                    if (teamConflict != null)
+                    var teamConflicts = await _appointmentService.GetTeamConflictsAsync(currentAppt.TeamId.Value, currentAppt.Title, newStart, newEnd, request.Id);
+                    if (teamConflicts.Any())
                     {
                         return Ok(new
                         {
                             suggestTeamJoin = true,
-                            appointmentId = teamConflict.Id,
-                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                            conflicts = teamConflicts.Select(c => new { id = c.Id, title = c.Title, time = $"{c.StartTime:HH:mm} - {c.EndTime:HH:mm} ({c.StartTime:dd/MM/yyyy})" }).ToList()
                         });
                     }
                 }
@@ -550,14 +552,13 @@ namespace AddCalendarAppointment.Controllers
                 // --- THÊM LOGIC CHECK XUNG ĐỘT NHÓM ---
                 if (req.Visibility == VisibilityType.Public && req.TeamId != null)
                 {
-                    var teamConflict = await _appointmentService.GetTeamConflictAsync(req.TeamId.Value, req.Title, req.StartTime, req.EndTime, req.Id);
-                    if (teamConflict != null)
+                    var teamConflicts = await _appointmentService.GetTeamConflictsAsync(req.TeamId.Value, req.Title, req.StartTime, req.EndTime, req.Id);
+                    if (teamConflicts.Any())
                     {
                         return Ok(new
                         {
                             suggestTeamJoin = true,
-                            appointmentId = teamConflict.Id,
-                            message = "Khung giờ này đã có một cuộc họp nhóm khác đang diễn ra.\nBạn có muốn tham gia không?"
+                            conflicts = teamConflicts.Select(c => new { id = c.Id, title = c.Title, time = $"{c.StartTime:HH:mm} - {c.EndTime:HH:mm} ({c.StartTime:dd/MM/yyyy})" }).ToList()
                         });
                     }
                 }

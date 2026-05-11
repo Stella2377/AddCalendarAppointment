@@ -55,7 +55,7 @@ namespace AddCalendarAppointment.Services
         }
 
 
-        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, Guid? suggestedAppointmentId, bool suggestOverlapReplacement, Appointment overlappingAppt)> CreateAppointmentAsync(Appointment appointment, Guid userId)
+        public async Task<(bool isSuccess, string errorMessage, bool suggestTeamJoin, List<Appointment> suggestedAppointments, bool suggestOverlapReplacement, Appointment overlappingAppt)> CreateAppointmentAsync(Appointment appointment, Guid userId)
         {
             if (appointment.EndTime == default || appointment.EndTime == appointment.StartTime)
             {
@@ -79,12 +79,11 @@ namespace AddCalendarAppointment.Services
             if (appointment.Visibility == VisibilityType.Public && appointment.TeamId != null)
             {
                 // Kiểm tra xem trong Team đã có cuộc họp nào CÙNG TÊN và CHỒNG LẤN THỜI GIAN chưa
-                var teamConflict = await GetTeamConflictAsync(appointment.TeamId.Value, appointment.Title, appointment.StartTime, appointment.EndTime);
+                var teamConflicts = await GetTeamConflictsAsync(appointment.TeamId.Value, appointment.Title, appointment.StartTime, appointment.EndTime);
 
-                if (teamConflict != null)
+                if (teamConflicts.Any())
                 {
-                    // Trả về suggestTeamJoin = true và ID của cuộc họp đó để Frontend hỏi Join
-                    return (false, "Phát hiện cuộc họp nhóm trùng tên và thời gian chồng lấn! Bạn có muốn tham gia cuộc họp nhóm hiện có này không?", true, teamConflict.Id, false, null);
+                    return (false, string.Empty, true, teamConflicts, false, null);
                 }
 
                 // Lưu ý: Theo yêu cầu, người dùng có 3 cách giải quyết xung đột: đổi tên, đổi giờ (không chồng lấn), hoặc set Private.
@@ -195,16 +194,17 @@ namespace AddCalendarAppointment.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Appointment?> GetTeamConflictAsync(Guid teamId, string title, DateTime start, DateTime end, Guid? excludeId = null)
+        public async Task<List<Appointment>> GetTeamConflictsAsync(Guid teamId, string title, DateTime start, DateTime end, Guid? excludeId = null)
         {
             return await _context.Appointments
-                .FirstOrDefaultAsync(a => a.TeamId == teamId
+                .Where(a => a.TeamId == teamId
                              && a.Visibility == VisibilityType.Public
                              && a.Title == title
                              && a.Id != excludeId
                              && a.StartTime < end
                              && a.EndTime > start
-                             && !a.IsDeleted);
+                             && !a.IsDeleted)
+                .ToListAsync();
         }
     }
 }
