@@ -86,6 +86,11 @@ namespace AddCalendarAppointment.Controllers
         {
             var userId = GetCurrentUserId();
 
+            if (req.StartTime < DateTime.Now)
+            {
+                return BadRequest(new { success = false, message = "Không thể tạo lịch trong quá khứ." });
+            }
+
             var overlaps = await _context.Appointments
                 .Include(a => a.Guests)
                 .Where(a => !a.IsDeleted
@@ -269,6 +274,11 @@ namespace AddCalendarAppointment.Controllers
                 // Chuyển đổi thời gian String sang DateTime trước để dùng kiểm tra trùng lặp
                 DateTime newStart = DateTime.Parse(request.StartTime);
                 DateTime newEnd = DateTime.Parse(request.EndTime);
+
+                if (newStart < DateTime.Now)
+                {
+                    return Ok(new { success = false, message = "Không thể dời lịch vào quá khứ." });
+                }
 
                 // --- THÊM LOGIC CHECK TRÙNG LỊCH ---
                 var overlaps = await _context.Appointments
@@ -493,6 +503,11 @@ namespace AddCalendarAppointment.Controllers
             try
             {
                 var userId = GetCurrentUserId();
+
+                if (req.StartTime < DateTime.Now)
+                {
+                    return BadRequest(new { success = false, message = "Không thể cập nhật lịch vào quá khứ." });
+                }
 
                 var overlaps = await _context.Appointments
                     .Include(a => a.Guests)

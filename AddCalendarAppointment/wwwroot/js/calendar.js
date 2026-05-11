@@ -674,6 +674,14 @@ $(document).on('drop', '.day-col', function (e) {
     let startTime = `${newDateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`;
     let endTime = `${newDateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
 
+    if (new Date(startTime) < new Date()) {
+        alert("Không thể dời lịch vào quá khứ.");
+        loadAppointments();
+        if ($dragShadow) { $dragShadow.remove(); $dragShadow = null; }
+        draggedEventId = null;
+        return;
+    }
+
     let currentId = draggedEventId; // Lưu lại ID vào biến cục bộ
 
     $.ajax({
@@ -859,6 +867,14 @@ $(document).ready(function () {
         let endTop = finalTop + finalHeight;
         let endHour = Math.floor(endTop / 60), endMin = Math.floor(endTop % 60);
 
+        let checkStart = new Date(`${dateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`);
+        if (checkStart < new Date()) {
+            alert("Không thể tạo lịch trong quá khứ.");
+            $('.appointment-ghost').remove();
+            $ghostEvent = null;
+            return;
+        }
+
         $('#popover-title').val('');
         $('#popover-location').val('');
         $('#popover-description').val('');
@@ -990,6 +1006,13 @@ $(document).ready(function () {
 
             let finalStart = new Date(`${dateStr}T${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00`);
             let finalEnd = new Date(`${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`);
+
+            if (finalStart < new Date()) {
+                alert("Không thể dời hoặc tạo lịch trong quá khứ.");
+                loadAppointments();
+                $resizeBlock = null;
+                return;
+            }
 
             let resizeId = $resizeBlock.data('id'); // Lưu lại ID trước khi AJAX chạy
 
@@ -1415,6 +1438,13 @@ $(document).ready(function () {
 
         let finalStart = new Date(`${startDateVal}T${startTimeVal}:00`);
         let finalEnd = new Date(`${$('#popover-end-date').val()}T${endTimeVal}:00`);
+
+        if (finalStart < new Date()) {
+            alert("Không thể tạo hoặc dời lịch vào quá khứ.");
+            $('#btn-save-event').prop('disabled', false).text('Save');
+            return;
+        }
+
         let selectedNotification = $('#notification-list select').first().val() || "30 minutes before";
 
         let appointmentData = {
@@ -1898,6 +1928,12 @@ $('#btn-save-fs-event').on('click', function () {
     let title = $('#fs-title').val() || "(No title)";
     let finalStart = new Date(`${$('#fs-start-date').val()}T${$('#fs-start-time').val()}:00`);
     let finalEnd = new Date(`${$('#fs-end-date').val()}T${$('#fs-end-time').val()}:00`);
+
+    if (finalStart < new Date()) {
+        alert("Không thể tạo hoặc dời lịch vào quá khứ.");
+        $(this).prop('disabled', false).text('Save');
+        return;
+    }
 
     // Thu thập thêm permissions nếu bạn có lưu trong DB
     let guestPermissions = {
