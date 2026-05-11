@@ -12,6 +12,7 @@ namespace AddCalendarAppointment.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Team> Teams { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<Reminder> Reminders { get; set; }
         public DbSet<AppointmentGuest> AppointmentGuests { get; set; }
         public DbSet<UserSettings> UserSettings { get; set; }
 

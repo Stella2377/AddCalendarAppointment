@@ -319,5 +319,75 @@
 		});
 		});
 	</script>
+
+	<script>
+		$(document).ready(function () {
+			function loadNotifications() {
+				$.ajax({
+					url: '/api/Appointment/notifications',
+					type: 'GET',
+					success: function (data) {
+						let unreadCount = data.filter(n => !n.isRead).length;
+						
+						// Cập nhật hiển thị chấm đỏ ở quả chuông
+						if (unreadCount > 0) {
+							$('#notification-badge').removeClass('d-none');
+						} else {
+							$('#notification-badge').addClass('d-none');
+						}
+
+						// Render danh sách
+						let container = $('#notification-list-container');
+						container.empty();
+
+						if (data.length === 0) {
+							container.append('<li class="p-3 text-center text-muted">Không có thông báo mới</li>');
+							return;
+						}
+
+						data.forEach(n => {
+							// CSS đậm nhạt cho tin chưa đọc/đã đọc
+							let bgClass = n.isRead ? "bg-light text-muted" : "bg-white fw-bold";
+							let dot = n.isRead ? "" : `<span class="text-primary ms-2"><i class="fa-solid fa-circle" style="font-size: 8px;"></i></span>`;
+							
+							container.append(`
+								<li>
+									<a class="dropdown-item py-2 border-bottom ${bgClass} notification-item" href="#" data-id="${n.id}">
+										<div class="d-flex justify-content-between align-items-center">
+											<span class="text-wrap" style="font-size: 0.9rem;">${n.message}</span>
+											${dot}
+										</div>
+										<small class="${n.isRead ? 'text-muted' : 'text-primary'}" style="font-size: 0.75rem;">${n.timeStr}</small>
+									</a>
+								</li>
+							`);
+						});
+					}
+				});
+			}
+
+			// Chạy ngay khi tải trang web xong
+			loadNotifications();
+
+			// Bạn có thể bỏ comment dòng dưới nếu muốn tự động làm mới thông báo mỗi 1 phút
+			setInterval(loadNotifications, 15000);
+
+			// Xử lý khi user click vào 1 thông báo
+			$(document).on('click', '.notification-item', function (e) {
+				e.preventDefault(); 
+				let notifId = $(this).data('id');
+				
+				$.ajax({
+					url: '/api/Appointment/mark-read/' + notifId,
+					type: 'POST',
+					success: function () {
+						// Tải lại danh sách để tự động xử lý đổi màu background và mất chấm đỏ
+						loadNotifications();
+					}
+				});
+			});
+		});
+	</script>
+
 </body>
 </html>

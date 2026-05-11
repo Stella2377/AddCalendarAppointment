@@ -731,5 +731,99 @@ namespace AddCalendarAppointment.Controllers
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
+
+        // --- CÁC HÀM XỬ LÝ THÔNG BÁO ---
+
+        // Hàm phụ tính toán khoảng thời gian (cắt chuỗi Notification)
+        private TimeSpan ParseNotification(string? notification)
+        {
+            if (string.IsNullOrEmpty(notification)) return TimeSpan.FromMinutes(30);
+            var parts = notification.Split(' ');
+            if (parts.Length >= 2 && double.TryParse(parts[0], out double value))
+            {
+                if (parts[1].Contains("minute")) return TimeSpan.FromMinutes(value);
+                if (parts[1].Contains("hour")) return TimeSpan.FromHours(value);
+                if (parts[1].Contains("day")) return TimeSpan.FromDays(value);
+                if (parts[1].Contains("week")) return TimeSpan.FromDays(value * 7);
+            }
+            return TimeSpan.FromMinutes(30); // Mặc định
+        }
+
+        [HttpGet("notifications")]
+        public async Task<IActionResult> GetNotifications()
+        {
+            var userId = GetCurrentUserId();
+            var now = DateTime.Now;
+
+            // 1. Quét các sự kiện sắp diễn ra để tạo Reminder tự động
+            var upcomingAppts = await _context.Appointments
+                .Include(a => a.Guests) // <-- THÊM DÒNG NÀY ĐỂ INCLUDE GUESTS
+                .Where(a => !a.IsDeleted && a.StartTime >= now &&
+                            (a.OwnerId == userId || a.Guests.Any(g => g.UserId == userId)))
+                .ToListAsync();
+
+            foreach (var appt in upcomingAppts)
+            {
+                var notifySpan = ParseNotification(appt.Notification);
+                var alertTime = appt.StartTime.Subtract(notifySpan);
+
+                // Nếu hiện tại đã đến lúc thông báo
+                if (now >= alertTime)
+                {
+                    bool exists = await _context.Reminders.AnyAsync(r => r.AppointmentId == appt.Id && r.UserId == userId);
+                    if (!exists)
+                    {
+                        // MẶC ĐỊNH LỜI NHẮC LÀ SẮP DIỄN RA
+                        string msg = $"Sắp diễn ra: {appt.Title} vào lúc {appt.StartTime:HH:mm dd/MM}";
+
+                        // KIỂM TRA NẾU LÀ GUEST MÀ CHƯA ACCEPT THÌ GẮN THÊM CẢNH BÁO
+                        var guestRecord = appt.Guests.FirstOrDefault(g => g.UserId == userId);
+                        if (guestRecord != null && guestRecord.Status == GuestStatus.Pending)
+                        {
+                            msg += " (Bạn chưa Accept tham gia lịch này)";
+                        }
+
+                        var reminder = new Reminder
+                        {
+                            AppointmentId = appt.Id,
+                            UserId = userId,
+                            AlertTime = alertTime,
+                            Message = msg,
+                            CreatedAt = now,
+                            IsRead = false
+                        };
+                        _context.Reminders.Add(reminder);
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            // 2. Trả về danh sách
+            var allReminders = await _context.Reminders
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new {
+                    id = r.Id,
+                    message = r.Message,
+                    isRead = r.IsRead,
+                    timeStr = r.CreatedAt.ToString("HH:mm dd/MM/yyyy")
+                })
+                .ToListAsync();
+
+            return Ok(allReminders);
+        }
+
+        [HttpPost("mark-read/{id}")]
+        public async Task<IActionResult> MarkNotificationRead(int id)
+        {
+            var userId = GetCurrentUserId();
+            var reminder = await _context.Reminders.FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+            if (reminder != null)
+            {
+                reminder.IsRead = true; // Cập nhật đã đọc
+                await _context.SaveChangesAsync();
+            }
+            return Ok(new { success = true });
+        }
     }
 }
